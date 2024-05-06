@@ -5,8 +5,9 @@ provider "aws" {
 
 terraform {
   backend "s3" {
-    bucket = "githubactions-terrafrom-task"
-    key    = "terraform.tfstate"
-    region = "us-east-1"
+    bucket  = "githubactions-terraform-task"
+    key     = "terraform.tfstate"
+    region  = "us-east-1"
+    encrypt = true
   }
 }
