@@ -59,6 +59,7 @@ jobs:
           name: terraform-plan-output
           path: ./root/main-eks-root/plan-output.txt
 
+
       # - name: execute terraform
       #   run: terraform apply -auto-approve
       #   working-directory: ./root/main-eks-root
