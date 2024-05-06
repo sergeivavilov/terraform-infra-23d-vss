@@ -34,16 +34,30 @@ jobs:
 
 
       
-      # - name: clone repo 
-      #   uses: actions/checkout@v4
+      - name: clone repo 
+        uses: actions/checkout@v4
 
-      # - name: initialize Terraform
-      #   run: terraform init 
-      #   working-directory: ./root/main-eks-root
+      - name: initialize Terraform
+        run: terraform init 
+        working-directory: ./root/main-eks-root
 
       # - name: Plan execution
       #   run: terraform plan
       #   working-directory: ./root/main-eks-root
+
+      - name: Plan Terraform
+        id: plan
+        run: |
+          terraform plan -out=tfplan -no-color > plan-output.txt
+          cat plan-output.txt
+        working-directory: ./root/main-eks-root
+        continue-on-error: true # This can be helpful to ensure the workflow continues even if the plan indicates changes
+
+      - name: Upload Terraform Plan Output
+        uses: actions/upload-artifact@v2
+        with:
+          name: terraform-plan-output
+          path: ./root/main-eks-root/plan-output.txt
 
       # - name: execute terraform
       #   run: terraform apply -auto-approve
