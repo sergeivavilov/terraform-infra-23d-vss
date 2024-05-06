@@ -1,5 +1,3 @@
-workflow/terraform-deploy.yaml
-
 # Role_ARN is in secrets
 
 name: Terraform Deployment Workflow
