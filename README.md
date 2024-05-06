@@ -1,9 +1,8 @@
-[![Terraform Deployment Workflow](https://github.com/312school/terraform-infra-23d-vss/actions/workflows/main.yml/badge.svg)](https://github.com/312school/terraform-infra-23d-vss/actions/workflows/main.yml)
-
+[![Terraform Deployment Workflow](https://github.com/312school/terraform-infra-23d-vss/actions/workflows/terraform-deploy.yaml/badge.svg)](https://github.com/312school/terraform-infra-23d-vss/actions/workflows/terraform-deploy.yaml)
 # 312school / terraform-infra-23d
 
 
-workflow/terraform-deploy.yaml
+.github/workflows/terraform-deploy.yaml
 
 # Role_ARN is in secrets
 
