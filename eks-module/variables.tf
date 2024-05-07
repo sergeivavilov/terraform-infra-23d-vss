@@ -12,7 +12,7 @@ variable "eks_version" {
 
 variable "eks_vpc_subnet_ids" {
   type = list(string)
-  default = ["subnet-0a25621108f8d07bf", "subnet-01f38f7cddb708b7d"] #us-east-1a, us-east-1b
+  default = ["subnet-0d5fc4ce23b5cb89a", "subnet-06e01dd0cc5e788b9"]  # Subnets in us-east-1a and us-east-1b
 }
 
 variable "k8_net_config_cidr" {
@@ -75,7 +75,7 @@ variable "eks_sg_description" {
 
 variable "eks_sg_vpc_id" {
   type = string
-  default = "vpc-05ef3bff9dc3269f7" #default vpc
+  default = "vpc-064f95e6b9ba1df03"  # default VPC ID
 }
 
 variable "eks_sg_tag" {
