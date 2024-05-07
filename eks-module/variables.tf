@@ -1,30 +1,176 @@
-variable "name" {
-  
+### EKS Cluster variables ###
+
+variable "eks_name" {
+  type = string
+  default = "project-x-dev"
 }
-variable "CIDR" {
-  
+
+variable "eks_version" {
+  type = string
+  default = "1.29"
 }
-variable "instance_type" {
-  
+
+variable "eks_vpc_subnet_ids" {
+  type = list(string)
+  default = ["subnet-0a25621108f8d07bf", "subnet-01f38f7cddb708b7d"] #us-east-1a, us-east-1b
 }
-variable "cluster_tag" {
-  
+
+variable "k8_net_config_cidr" {
+  type = string
+  default = "10.7.0.0/16"
 }
-variable "vpc_id" {
-  
+
+variable "tag_name" {
+  type = string
+  default = "project-x"  
 }
-variable "subnet_ids" {
-  
+
+### Trust Policy variables ###
+
+variable "iam_pol_effect" {
+  type = string
+  default = "Allow"
 }
-variable "alternative_instance_type" {
-  
+
+variable "iam_pol_prin_type" {
+  type = string
+  default = "Service"
 }
-variable "capacity" {
-  
+
+variable "iam_pol_prin_identifiers" {
+  type = list(string)
+  default = ["eks.amazonaws.com"]
 }
-variable "spot_allocation_strategy" {
-  
+
+variable "iam_pol_actions" {
+  type = list(string)
+  default = ["sts:AssumeRole"]
 }
-variable "availability-zone" {
-  
+
+### IAM role variables ###
+
+variable "iam_role_name" {
+  type = string
+  default = "project-x-dev-eks-iam-role"
+}
+
+### IAM role policy attachment variables ###
+
+variable "iam_role_policy_arn" {
+  type = string
+  default = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
+### EKS Cluster SG variables ###
+
+variable "eks_sg_name" {
+  type = string
+  default = "EKS Cluster Security Group"
+}
+
+variable "eks_sg_description" {
+  type = string
+  default = "Allow All inbound traffic from Self and all outbound traffic"
+}
+
+variable "eks_sg_vpc_id" {
+  type = string
+  default = "vpc-05ef3bff9dc3269f7" #default vpc
+}
+
+variable "eks_sg_tag" {
+  type = map(string)
+  default = {
+    Name = "eks-cluster-sg"
+    "kubernetes.io/cluster/project-x-dev" = "owned"
+    "aws:eks:cluster-name"	= "project-x-dev"
+  }
+}
+
+variable "sg_all_port_protocol" {
+  type = string
+  default = "-1" # semantically equivalent to all ports
+}
+
+variable "sg_all_ipv4_traffic" {
+  type = string
+  default = "0.0.0.0/0"
+}
+
+variable "sg_all_ipv6_traffic" {
+  type = string
+  default = "::/0"
+}
+
+variable "sg_allow_tls_port" {
+  type = number
+  default = 443 
+}
+
+### WORKERS variables ###
+
+variable "worker_lt_name_prefix" {
+  type = string
+  default = "project-x-eks-dev-worker-nodes"
+}
+
+variable "worker_lt_inst_type" {
+  type = string
+  default = "t3.medium"
+}
+
+### Worker ASG variables ###
+
+variable "worker_asg_desired_cap" {
+  type = number
+  default = 2
+}
+
+variable "worker_asg_max_size" {
+  type = number
+  default = 3
+}
+
+variable "worker_asg_min_size" {
+  type = number
+  default = 1
+}
+
+### Worker ASG mixed instance policy variables ###
+
+variable "worker_asg_base_cap" {
+  type = number
+  default = 0
+}
+
+variable "worker_asg_percent_base_cap" {
+  type = number
+  default = 0
+}
+
+variable "worker_asg_spot_strategy" {
+  type = string
+  default = "capacity-optimized"
+}
+
+### Worker ASG launch template variables ###
+
+variable "override_inst_type_1" {
+  type = string
+  default = "t3.medium"
+}
+
+variable "override_weight_cap_1" {
+  type = string
+  default = "2"
+}
+
+variable "override_inst_type_2" {
+  type = string
+  default = "t2.medium"
+}
+
+variable "override_weight_cap_2" {
+  type = string
+  default = "2"
 }
