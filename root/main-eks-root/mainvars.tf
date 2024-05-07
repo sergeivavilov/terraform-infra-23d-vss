@@ -50,17 +50,15 @@ variable "iam_pol_actions" {
 ### IAM role variables ###
 
 
-variable "iam_role_name" {
-  type = string
-  default = "GitHubActionsTerraformIAMrole"  # Name of the IAM role for GitHub Actions
-}
-
-
-
 # variable "iam_role_name" {
 #   type = string
-#   default = "project-x-dev-eks-iam-role"
+#   default = "GitHubActionsTerraformIAMrole"  # Name of the IAM role for GitHub Actions
 # }
+
+variable "iam_role_name" {
+  type = string
+  default = "project-x-dev-eks-iam-role"
+}
 
 ### IAM role policy attachment variables ###
 
