@@ -1,8 +1,6 @@
 name: Terraform Deployment Workflow
 
 on:
-  push:
-    branches: ["*"]
   workflow_dispatch:
     inputs:
       action:
@@ -10,44 +8,48 @@ on:
         required: true
         default: 'apply'
 
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
-  deploy:
+  terraform:
     runs-on: ubuntu-latest
-    environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
+    environment: dev
+
+    defaults:
+      run:
+        working-directory: ./root/main-eks-root/
+        shell: bash
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-region: us-east-1
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          role-session-name: GitHubActions
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-      - name: Initialize Terraform
-        run: terraform init
-        working-directory: ./root/main-eks-root
+    - name: Terraform Init
+      run: |
+        terraform init -backend-config="bucket=githubactions-terraform-task" -backend-config="key=terraform.tfstate" -backend-config="region=us-east-1"
 
-      - name: Plan Terraform
-        run: terraform plan -out=tfplan -no-color
-        working-directory: ./root/main-eks-root
+    - name: Terraform Plan
+      run: |
+        terraform plan -var-file="homework-project-vss.tfvars" -out=tfplan
 
-      - name: Apply or Destroy Terraform
-        run: |
-          if [ "${{ github.event.inputs.action }}" == "apply" ]; then
-            terraform apply -auto-approve tfplan
-          elif [ "${{ github.event.inputs.action }}" == "destroy" ]; then
-            terraform destroy -auto-approve
-          fi
-        working-directory: ./root/main-eks-root
-        env:
-          TF_VAR_action: ${{ github.event.inputs.action }}
+    - name: Apply or Destroy Infrastructure
+      if: ${{ github.event.inputs.action == 'apply' || github.event.inputs.action == 'destroy' }}
+      run: |
+        if [ "${{ github.event.inputs.action }}" == "apply" ]; then
+          echo "Applying changes..."
+          terraform apply -auto-approve tfplan
+        elif [ "${{ github.event.inputs.action }}" == "destroy" ]; then
+          echo "Destroying infrastructure..."
+          terraform destroy -var-file="homework-project-vss.tfvars" -auto-approve
 
+    - name: Upload Terraform Plan Output
+      if: github.event.inputs.action == 'apply'
+      uses: actions/upload-artifact@v2
+      with:
+        name: terraform-plan-output
+        path: ./plan-output.txt
 
 
 
