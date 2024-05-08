@@ -1,10 +1,12 @@
 name: Terraform Deployment Workflow
 
 on:
+  push:
+    branches: ["*"]
   workflow_dispatch:
     inputs:
       action:
-        description: 'Action to perform (apply, destroy, or full-cycle)'
+        description: 'Action to perform (apply or destroy)'
         required: true
         default: 'apply'
 
@@ -13,11 +15,9 @@ permissions:
   contents: read
 
 jobs:
-  terraform:
+  deploy:
     runs-on: ubuntu-latest
     environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
-    env:
-      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -26,35 +26,27 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: us-east-1
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           role-session-name: GitHubActions
-      
+
       - name: Initialize Terraform
         run: terraform init
         working-directory: ./root/main-eks-root
 
       - name: Plan Terraform
-        run: |
-          terraform plan -out=tfplan -no-color
-          terraform show -no-color tfplan > plan-output.txt
+        run: terraform plan -out=tfplan -no-color
         working-directory: ./root/main-eks-root
 
       - name: Apply or Destroy Terraform
-        if: ${{ github.event.inputs.action == 'apply' || github.event.inputs.action == 'full-cycle' }}
-        run: terraform apply -auto-approve tfplan
+        run: |
+          if [ "${{ github.event.inputs.action }}" == "apply" ]; then
+            terraform apply -auto-approve tfplan
+          elif [ "${{ github.event.inputs.action }}" == "destroy" ]; then
+            terraform destroy -auto-approve
+          fi
         working-directory: ./root/main-eks-root
-
-      - name: Destroy Terraform
-        if: ${{ github.event.inputs.action == 'destroy' || github.event.inputs.action == 'full-cycle' }}
-        run: terraform destroy -auto-approve
-        working-directory: ./root/main-eks-root
-
-      - name: Upload Terraform Plan Output
-        if: github.event.inputs.action != 'destroy'
-        uses: actions/upload-artifact@v2
-        with:
-          name: terraform-plan-output
-          path: ./root/main-eks-root/plan-output.txt
+        env:
+          TF_VAR_action: ${{ github.event.inputs.action }}
 
 
 
