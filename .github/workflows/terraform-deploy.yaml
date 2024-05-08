@@ -1,22 +1,15 @@
 # THIS IS .github/workflows/terraform-deploy.yaml
 
-
-# Role_ARN is in secrets
-
 name: Terraform Deployment Workflow
 
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     branches: ["*"]
-
-  # Allows you to run this workflow manually from the Actions tab
-  # workflow_dispatch:
+  workflow_dispatch:
 
 permissions:
-  id-token: write # This is required for requesting the JWT
-  contents: read  # This is required for actions/checkout
-
+  id-token: write
+  contents: read
 
 jobs:
   deploy:
@@ -27,40 +20,110 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: us-east-1
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           role-session-name: GitHubActions
-      # Additional steps follow
 
-
-      
-      - name: clone repo 
-        uses: actions/checkout@v4
-
-      - name: initialize Terraform
-        run: terraform init 
+      - name: Initialize Terraform
+        run: terraform init
         working-directory: ./root/main-eks-root
-
-    
 
       - name: Plan Terraform
         id: plan
-        run: |
-          terraform plan -out=tfplan -no-color > plan-output.txt
-          cat plan-output.txt
+        run: terraform plan -out=tfplan -no-color > plan-output.txt
         working-directory: ./root/main-eks-root
-        continue-on-error: true # This can be helpful to ensure the workflow continues even if the plan indicates changes
+
+      - name: Apply Terraform
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve tfplan
+        working-directory: ./root/main-eks-root
 
       - name: Upload Terraform Plan Output
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v2
         with:
           name: terraform-plan-output
           path: ./root/main-eks-root/plan-output.txt
 
 
-      # - name: execute terraform
-      #   run: terraform apply -auto-approve
-      #   working-directory: ./root/main-eks-root
+
+
+
+
+
+
+
+
+
+
+
+# # THIS IS .github/workflows/terraform-deploy.yaml
+
+
+# # Role_ARN is in secrets
+
+# name: Terraform Deployment Workflow
+
+# on:
+#   # Triggers the workflow on push or pull request events but only for the "main" branch
+#   push:
+#     branches: ["*"]
+
+#   # Allows you to run this workflow manually from the Actions tab
+#   # workflow_dispatch:
+
+# permissions:
+#   id-token: write # This is required for requesting the JWT
+#   contents: read  # This is required for actions/checkout
+
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
+#     env:
+#       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v2
+#       - name: Configure AWS Credentials
+#         uses: aws-actions/configure-aws-credentials@v3
+#         with:
+#           aws-region: us-east-1
+#           role-to-assume: ${{ env.AWS_ROLE_ARN }}
+#           role-session-name: GitHubActions
+#       # Additional steps follow
+
+
+      
+#       - name: clone repo 
+#         uses: actions/checkout@v4
+
+#       - name: initialize Terraform
+#         run: terraform init 
+#         working-directory: ./root/main-eks-root
+
+    
+
+#       - name: Plan Terraform
+#         id: plan
+#         run: |
+#           terraform plan -out=tfplan -no-color > plan-output.txt
+#           cat plan-output.txt
+#         working-directory: ./root/main-eks-root
+#         continue-on-error: true # This can be helpful to ensure the workflow continues even if the plan indicates changes
+
+#       - name: Upload Terraform Plan Output
+#         uses: actions/upload-artifact@v2
+#         with:
+#           name: terraform-plan-output
+#           path: ./root/main-eks-root/plan-output.txt
+
+
+#       # - name: execute terraform
+#       #   run: terraform apply -auto-approve
+#       #   working-directory: ./root/main-eks-root
