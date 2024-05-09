@@ -1,16 +1,15 @@
 resource "aws_db_instance" "reviews_app_db" {
-  allocated_storage           = var.allocated_storage
-  storage_type                = var.storage_type
-  engine                      = var.engine
-  engine_version              = var.engine_version
-  instance_class              = var.instance_class
-  db_name                     = var.db_name
-  identifier                  = var.identifier
-  username                    = var.rds_master_username
-  password                    = var.rds_master_password # Ensure this is managed securely
-  manage_master_user_password = var.manage_master_user_password
-  vpc_security_group_ids      = [aws_security_group.rds_sg.id]
-  db_subnet_group_name        = aws_db_subnet_group.postgres_subnet_group.name
+  allocated_storage    = var.allocated_storage
+  storage_type         = var.storage_type
+  engine               = var.engine
+  engine_version       = var.engine_version
+  instance_class       = var.instance_class
+  db_name              = var.db_name
+  identifier           = var.identifier
+  username             = var.rds_master_username
+  password             = var.rds_master_password # Ensure this is managed securely
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+  db_subnet_group_name = aws_db_subnet_group.postgres_subnet_group.name
 
   backup_retention_period = var.backup_retention_period
   skip_final_snapshot     = var.skip_final_snapshot
@@ -52,4 +51,5 @@ resource "aws_security_group" "rds_sg" {
     Name = var.rds_sg_tags_name
   }
 }
+
 
