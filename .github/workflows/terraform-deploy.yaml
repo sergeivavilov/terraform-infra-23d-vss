@@ -37,10 +37,12 @@ jobs:
         run: terraform plan -out=tfplan -no-color > plan-output.txt
         working-directory: ./root/main-eks-root
 
-      - name: Apply Terraform
-        if: github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve tfplan
-        working-directory: ./root/main-eks-root
+
+      # Comment out the apply step to prevent resource creation
+      # - name: Apply Terraform
+      #   if: github.ref == 'refs/heads/main'
+      #   run: terraform apply -auto-approve tfplan
+      #   working-directory: ./root/main-eks-root
 
       - name: Upload Terraform Plan Output
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -49,6 +51,12 @@ jobs:
           name: terraform-plan-output
           path: ./root/main-eks-root/plan-output.txt
 
+
+      # Add the destroy step
+      - name: Terraform Destroy
+        if: github.ref == 'refs/heads/main'
+        run: terraform destroy -var-file="homework-project-vss.tfvars" -auto-approve
+        working-directory: ./root/main-eks-root
 
 
 
