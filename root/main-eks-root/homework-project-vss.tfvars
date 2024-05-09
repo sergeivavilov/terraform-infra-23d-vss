@@ -1,3 +1,9 @@
+#RDS
+rds_master_username = "your-username"
+rds_master_password = "your-password"
+
+
+
 eks_name = "project-x-dev"
 eks_version = "1.29"
 eks_vpc_subnet_ids = ["subnet-0d5fc4ce23b5cb89a", "subnet-06e01dd0cc5e788b9"]  # Subnets in us-east-1a and us-east-1b
