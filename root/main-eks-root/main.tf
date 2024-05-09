@@ -36,3 +36,33 @@ module "project-x-eks-cluster" {
   override_inst_type_2 = var.override_inst_type_2
   override_weight_cap_2 = var.override_weight_cap_2
 }
+
+
+module "rds_postgres" {
+  source = "../../rds-postgres-module"
+
+  eks_cluster_sg_id           = module.project_x_eks_cluster.worker_security_group_id
+  subnet_ids                  = ["subnet-xxxxxxxxxxxx", "subnet-yyyyyyyyyyyy"]
+  allocated_storage           = 20
+  storage_type                = "gp2"
+  engine                      = "postgres"
+  engine_version              = "16.2"
+  instance_class              = "db.t3.micro"
+  db_name                     = "reviews_app_data"
+  identifier                  = "reviews-app-db"
+  username                    = var.rds_master_username
+  password                    = var.rds_master_password
+  manage_master_user_password = true
+  backup_retention_period     = 7
+  skip_final_snapshot         = true
+  rds_tags_name               = "reviews-app-db"
+  rds_sg_name                 = "rds-postgres-sg"
+  rds_sg_description          = "Security group for RDS PostgreSQL"
+  rds_sg_vpc                  = "vpc-xxxxxxxxxxxxxxxxx"
+  rds_ingress_port            = 5432
+  rds_ingress_protocol        = "tcp"
+  rds_egress_port             = 0
+  rds_egress_protocol         = "-1"
+  rds_egress_cidr             = ["0.0.0.0/0"]
+  rds_sg_tags_name            = "rds-postgres-sg"
+}
