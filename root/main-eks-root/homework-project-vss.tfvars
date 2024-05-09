@@ -1,6 +1,6 @@
 #RDS
-rds_master_username = "your-username"
-rds_master_password = "your-password"
+rds_master_username = "admin"
+rds_master_password = "password"
 
 
 
