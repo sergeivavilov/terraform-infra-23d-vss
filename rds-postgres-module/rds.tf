@@ -8,6 +8,7 @@ resource "aws_db_instance" "reviews_app_db" {
   identifier           = var.identifier
   username             = var.rds_master_username
   password             = var.rds_master_password # Ensure this is managed securely
+  #   manage_master_user_password = var.manage_master_user_password
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
   db_subnet_group_name = aws_db_subnet_group.postgres_subnet_group.name
 
@@ -51,5 +52,6 @@ resource "aws_security_group" "rds_sg" {
     Name = var.rds_sg_tags_name
   }
 }
+
 
 
