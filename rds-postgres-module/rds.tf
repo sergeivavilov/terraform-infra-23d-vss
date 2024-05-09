@@ -6,8 +6,8 @@ resource "aws_db_instance" "reviews_app_db" {
   instance_class              = var.instance_class
   db_name                     = var.db_name
   identifier                  = var.identifier
-  username                    = var.username
-  password                    = var.password # Ensure this is managed securely
+  username                    = var.rds_master_username
+  password                    = var.rds_master_password # Ensure this is managed securely
   manage_master_user_password = var.manage_master_user_password
   vpc_security_group_ids      = [aws_security_group.rds_sg.id]
   db_subnet_group_name        = aws_db_subnet_group.postgres_subnet_group.name
