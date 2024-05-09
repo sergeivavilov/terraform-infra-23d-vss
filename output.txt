@@ -606,7 +606,6 @@ module "rds_postgres" {
   rds_sg_tags_name            = "rds-postgres-sg"
 }
 
-
 ./root/main-eks-root/providers.tf
 # Providers.tf
 provider "aws" {
@@ -804,5 +803,17 @@ variable "override_inst_type_2" {
 variable "override_weight_cap_2" {
   type = string
   default = "2"
+}
+
+
+variable "rds_master_username" {
+  description = "The master username for the RDS instance"
+  type = string
+}
+
+variable "rds_master_password" {
+  description = "The master password for the RDS instance"
+  type = string
+  sensitive = true
 }
 
