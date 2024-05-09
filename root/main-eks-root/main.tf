@@ -65,4 +65,3 @@ module "rds_postgres" {
   rds_egress_cidr             = ["0.0.0.0/0"]
   rds_sg_tags_name            = "rds-postgres-sg"
 }
-
