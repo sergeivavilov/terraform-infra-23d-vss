@@ -4,7 +4,7 @@ resource "aws_eks_cluster" "cluster" {
   version  = var.eks_version
 
   vpc_config {
-    subnet_ids = var.eks_vpc_subnet_ids
+    subnet_ids         = var.eks_vpc_subnet_ids
     security_group_ids = [aws_security_group.eks_cluster_sg.id]
   }
 
@@ -49,7 +49,6 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_role-AmazonEKSClusterPoli
   role       = aws_iam_role.eks_cluster_role.name
 }
 
-
 resource "aws_security_group" "eks_cluster_sg" {
   name        = var.eks_sg_name
   description = var.eks_sg_description
@@ -59,11 +58,11 @@ resource "aws_security_group" "eks_cluster_sg" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "allow_tls_ipv4" {
-  security_group_id = aws_security_group.eks_cluster_sg.id
-  referenced_security_group_id         = aws_security_group.eks_cluster_sg.id
-  from_port         = var.sg_allow_tls_port
-  ip_protocol       = "tcp"
-  to_port           = var.sg_allow_tls_port
+  security_group_id             = aws_security_group.eks_cluster_sg.id
+  referenced_security_group_id  = aws_security_group.eks_cluster_sg.id
+  from_port                     = var.sg_allow_tls_port
+  ip_protocol                   = "tcp"
+  to_port                       = var.sg_allow_tls_port
 }
 
 resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4" {
@@ -78,7 +77,38 @@ resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv6" {
   ip_protocol       = var.sg_all_port_protocol
 }
 
-# 
+# Define the eks_worker_sg resource
+resource "aws_security_group" "eks_worker_sg" {
+  name        = "eks-worker-sg"
+  description = "Security group for EKS worker nodes"
+  vpc_id      = var.eks_sg_vpc_id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "eks-worker-sg"
+  }
+}
+
 output "endpoint" {
   value = aws_eks_cluster.cluster.endpoint
 }
