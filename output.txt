@@ -186,6 +186,15 @@ variable "rds_sg_tags_name" {
 }
 
 
+./eks-module/outputs.tf
+output "worker_security_group_id" {
+  value = aws_security_group.eks_worker_sg.id
+}
+
+output "worker_role_arn" {
+  value = aws_iam_role.eks_worker_role.arn
+}
+
 ./eks-module/workers.tf
 locals {
   version = "1.29"
@@ -271,8 +280,72 @@ resource "aws_autoscaling_group" "eks_workers" {
 #   role       = aws_iam_role.example.name
 # }
 
+./eks-module/configmap.tf
+resource "kubernetes_config_map" "aws_auth" {
+  metadata {
+    name      = "aws-auth"
+    namespace = "kube-system"
+  }
+
+  data = {
+    mapRoles = <<YAML
+- rolearn: ${aws_iam_role.eks_worker_role.arn}
+  username: system:node:{{EC2PrivateDNSName}}
+  groups:
+    - system:bootstrappers
+    - system:nodes
+YAML
+  }
+}
+
+resource "aws_iam_role" "eks_worker_role" {
+  name = "eks-worker-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      },
+    ]
+  })
+
+  tags = {
+    Name = "eks-worker-role"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "eks_worker_node_policy" {
+  role       = aws_iam_role.eks_worker_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
+  role       = aws_iam_role.eks_worker_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_container_registry_readonly" {
+  role       = aws_iam_role.eks_worker_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
 ./eks-module/variables.tf
 ### EKS Cluster variables ###
+
+#configmap
+variable "eks_worker_role_name" {
+  description = "The name of the IAM role for the EKS worker nodes"
+  type        = string
+  default     = "eks-worker-role"
+}
+
+### EKS Cluster variables ###
+
 
 variable "eks_name" {
   type = string
@@ -631,6 +704,7 @@ module "project-x-eks-cluster" {
   sg_all_ipv4_traffic       = var.sg_all_ipv4_traffic
   sg_all_port_protocol      = var.sg_all_port_protocol
   sg_all_ipv6_traffic       = var.sg_all_ipv6_traffic
+  eks_worker_role_name      = var.eks_worker_role_name
 
   ### workers.tf ###
   worker_lt_name_prefix     = var.worker_lt_name_prefix
@@ -646,6 +720,7 @@ module "project-x-eks-cluster" {
   override_inst_type_2      = var.override_inst_type_2
   override_weight_cap_2     = var.override_weight_cap_2
 }
+
 
 module "rds_postgres" {
   source = "../../rds-postgres-module"
@@ -690,6 +765,16 @@ terraform {
     encrypt = true
   }
 }
+
+
+provider "kubernetes" {
+  host                   = module.project-x-eks-cluster.endpoint
+  cluster_ca_certificate = base64decode(module.project-x-eks-cluster.kubeconfig-certificate-authority-data)
+  token                  = data.aws_eks_cluster_auth.cluster.token
+
+  load_config_file = false
+}
+
 
 ./root/main-eks-root/mainvars.tf
 ### EKS Cluster variables ###
