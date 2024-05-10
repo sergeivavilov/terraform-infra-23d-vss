@@ -1,5 +1,13 @@
 ### EKS Cluster variables ###
 
+variable "eks_worker_role_name" {
+  description = "The name of the IAM role for the EKS worker nodes"
+  type        = string
+  default     = "eks-worker-role"
+}
+
+
+
 variable "eks_name" {
   type = string
   default = "project-x-dev"
