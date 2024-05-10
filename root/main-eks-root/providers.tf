@@ -11,3 +11,13 @@ terraform {
     encrypt = true
   }
 }
+
+
+provider "kubernetes" {
+  host                   = module.project-x-eks-cluster.endpoint
+  cluster_ca_certificate = base64decode(module.project-x-eks-cluster.kubeconfig-certificate-authority-data)
+  token                  = data.aws_eks_cluster_auth.cluster.token
+
+  load_config_file = false
+}
+
