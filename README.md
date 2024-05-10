@@ -4,7 +4,76 @@
 
 # this command to add all in one text file 
 # find . -name "*.tf" -exec echo {} \; -exec cat {} \; -exec echo \; > output.txt
+===================================================================
 
+
+# terraform-infra-23d
+Project-X Terraform Infrastructure
+
+Overview
+
+This repository contains Terraform code for setting up the infrastructure for Project-X. The infrastructure includes an Amazon EKS cluster, networking components, and other resources necessary for the project.
+
+Prerequisites
+
+Before running the Terraform scripts, make sure you have:
+
+	•	Terraform installed.
+	•	AWS CLI configured with appropriate access and permissions.
+	•	Necessary IAM roles and policies created in your AWS account.
+
+Usage
+
+## Setting Up Cluster Environment
+
+To set up the cluster environment, use the following command:
+
+aws eks update-kubeconfig --region us-east-1 --name project-x-dev
+
+## Assuming Role
+
+To assume a role, use the following command:
+
+aws sts assume-role --role-arn arn:aws:iam::XXXXXXXXXXXX:role/MyAdminRole --role-session-name username-session
+
+## Accessing Cluster After Assuming Role
+
+After assuming the role, update the kubeconfig using the following command:
+
+aws eks update-kubeconfig --name project-x-dev --role-arn arn:aws:iam::XXXXXXXXXXXX:role/MyAdminRole
+
+## Deploying NGINX Deployment
+
+To deploy NGINX, run the following command:
+
+kubectl create deployment milestone --image=nginx --replicas=3
+
+## Executing Into a Pod
+
+To execute into one of the pods, use the following command:
+
+kubectl exec -it <pod-name> -- sh
+
+Replace <pod-name> with the name of the pod you want to access.
+
+## Updating and Installing PostgreSQL Client
+
+To update and install the PostgreSQL client inside the pod, run the following commands:
+
+apt-get update
+apt-get install -y postgresql-client
+
+## Accessing PostgreSQL Database
+
+To access the PostgreSQL database, use the following command:
+
+psql -h your-db-endpoint.rds.amazonaws.com -U dbusername -d dbname
+
+Replace your-db-endpoint, dbusername, and dbname with your actual database endpoint, username, and database name respectively.
+
+
+
+===================================================================
 
 task : 
 
