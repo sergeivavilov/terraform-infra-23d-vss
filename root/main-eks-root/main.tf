@@ -21,6 +21,7 @@ module "project-x-eks-cluster" {
   sg_all_ipv4_traffic       = var.sg_all_ipv4_traffic
   sg_all_port_protocol      = var.sg_all_port_protocol
   sg_all_ipv6_traffic       = var.sg_all_ipv6_traffic
+  eks_worker_role_name      = var.eks_worker_role_name
 
   ### workers.tf ###
   worker_lt_name_prefix     = var.worker_lt_name_prefix
@@ -36,6 +37,7 @@ module "project-x-eks-cluster" {
   override_inst_type_2      = var.override_inst_type_2
   override_weight_cap_2     = var.override_weight_cap_2
 }
+
 
 module "rds_postgres" {
   source = "../../rds-postgres-module"
