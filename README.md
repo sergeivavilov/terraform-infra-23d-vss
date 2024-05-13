@@ -3,7 +3,12 @@
 
 
 # this command to add all in one text file 
-# find . -name "*.tf" -exec echo {} \; -exec cat {} \; -exec echo \; > output.txt
+{
+  tree;
+  echo ".github/workflows/terraform-deploy.yaml";
+  cat .github/workflows/terraform-deploy.yaml;
+  find . -name "*.tf" -exec echo "{}" \; -exec cat {} \; -exec echo \;
+} > output.txt
 ===================================================================
 
 
