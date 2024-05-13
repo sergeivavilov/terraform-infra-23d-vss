@@ -1,3 +1,5 @@
+#  this is : root/main-eks-root/mainvars.tf
+
 ### EKS Cluster variables ###
 
 variable "eks_worker_role_name" {
