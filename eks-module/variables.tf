@@ -3,14 +3,11 @@
 
 ### EKS Cluster variables ###
 
-# configmap
 variable "eks_worker_role_name" {
   description = "The name of the IAM role for the EKS worker nodes"
   type        = string
   default     = "eks-worker-role"
 }
-
-### EKS Cluster variables ###
 
 variable "eks_name" {
   type    = string
@@ -60,6 +57,11 @@ variable "iam_pol_actions" {
 }
 
 ### IAM role variables ###
+
+# variable "iam_role_name" {
+#   type    = string
+#   default = "GitHubActionsTerraformIAMrole"  # Name of the IAM role for GitHub Actions
+# }
 
 variable "iam_role_name" {
   type    = string
@@ -186,3 +188,17 @@ variable "override_weight_cap_2" {
   type    = string
   default = "2"
 }
+
+### RDS variables ###
+
+variable "rds_master_username" {
+  description = "The master username for the RDS instance"
+  type        = string
+}
+
+variable "rds_master_password" {
+  description = "The master password for the RDS instance"
+  type        = string
+  sensitive   = true
+}
+
