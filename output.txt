@@ -1017,8 +1017,11 @@ module "project-x-eks-cluster" {
   override_weight_cap_1     = var.override_weight_cap_1
   override_inst_type_2      = var.override_inst_type_2
   override_weight_cap_2     = var.override_weight_cap_2
-}
 
+  ### rds.tf ###
+  rds_master_username       = var.rds_master_username
+  rds_master_password       = var.rds_master_password
+}
 
 module "rds_postgres" {
   source = "../../rds-postgres-module"
