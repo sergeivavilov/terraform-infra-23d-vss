@@ -820,8 +820,6 @@ variable "rds_master_password" {
   type        = string
   sensitive   = true
 }
-
-
 ./eks-module/eks.tf
 resource "aws_eks_cluster" "cluster" {
   name     = var.eks_name
