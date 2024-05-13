@@ -152,5 +152,3 @@ output "worker_security_group_id" {
 #   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 #   role       = aws_iam_role.example.name
 # }
-
-
