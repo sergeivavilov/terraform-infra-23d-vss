@@ -1,4 +1,28 @@
 [![Terraform Deployment Workflow](https://github.com/312school/terraform-infra-23d-vss/actions/workflows/terraform-deploy.yaml/badge.svg)](https://github.com/312school/terraform-infra-23d-vss/actions/workflows/terraform-deploy.yaml)
+
+
+
+
+
+
+[![Terraform Deployment Workflow](https://github.com/sergeivavilov/terraform-infra-23d-vss/actions/workflows/terraform-deploy.yaml/badge.svg)](https://github.com/sergeivavilov/terraform-infra-23d-vss/actions/workflows/terraform-deploy.yaml)
+
+
+
+
+
+[![Terraform Deployment Workflow](https://github.com/sergeivavilov/terraform-infra-23d-vss/actions/workflows/terraform-deploy.yaml/badge.svg)](https://github.com/sergeivavilov/terraform-infra-23d-vss/actions/workflows/terraform-deploy.yaml)
+
+
+
+
+
+[![Terraform Deployment Workflow](https://github.com/sergeivavilov/terraform-infra-23d-vss/actions/workflows/terraform-deploy.yaml/badge.svg)](https://github.com/sergeivavilov/terraform-infra-23d-vss/actions/workflows/terraform-deploy.yaml)
+
+
+
+
+[![Terraform Deployment Workflow](https://github.com/sergeivavilov/terraform-infra-23d-vss/actions/workflows/terraform-deploy.yaml/badge.svg)](https://github.com/sergeivavilov/terraform-infra-23d-vss/actions/workflows/terraform-deploy.yaml)
 # 312school / terraform-infra-23d
 
 
