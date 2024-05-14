@@ -6,7 +6,7 @@ resource "kubernetes_config_map" "aws_auth" {
   }
 
   data = {
-    mapRoles = <<YAML  # Map AWS IAM roles to Kubernetes roles.
+    mapRoles = <<-YAML  # Map AWS IAM roles to Kubernetes roles.
 - rolearn: ${aws_iam_role.eks_worker_role.arn}  # ARN of the EKS worker IAM role.
   username: system:node:{{EC2PrivateDNSName}}  # Maps the role to a username.
   groups:  # Kubernetes groups the role belongs to.
@@ -15,6 +15,7 @@ resource "kubernetes_config_map" "aws_auth" {
 YAML
   }
 }
+
 
 # Define an AWS IAM role for EKS workers.
 resource "aws_iam_role" "eks_worker_role" {
