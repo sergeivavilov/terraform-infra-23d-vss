@@ -9,7 +9,6 @@
 ├── github copy
 ├── nginx-deployment.yaml
 ├── output.txt
-├── plan-output.txt
 ├── rds-postgres-module
 │   ├── rds.tf
 │   └── vars.tf
@@ -20,7 +19,7 @@
         ├── mainvars.tf
         └── providers.tf
 
-6 directories, 15 files
+6 directories, 14 files
 .github/workflows/terraform-deploy.yaml
 # THIS IS .github/workflows/terraform-deploy.yaml
 
