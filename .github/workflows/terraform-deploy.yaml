@@ -1,183 +1,183 @@
-# THIS IS .github/workflows/terraform-deploy.yaml
-
-name: Terraform Deployment Workflow  # Define the name of the GitHub Actions workflow.
-
-on:  # Specify the events that will trigger the workflow.
-  push:  # Trigger the workflow on push events.
-    branches: ["*"]  # Apply to pushes to all branches.
-  workflow_dispatch:  # Allow manual triggering of the workflow from GitHub UI.
-
-permissions:  # Define permissions for the workflow.
-  id-token: write  # Allow writing an ID token for authentication.
-  contents: read  # Allow reading the repository content.
-
-jobs:  # Define the jobs that make up the workflow.
-  deploy:  # Name of the job.
-    runs-on: ubuntu-latest  # Specify the type of virtual host machine to run the job on (latest Ubuntu).
-    environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}  # Set environment based on the branch.
-    env:  # Define environment variables for the job.
-      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}  # Set the AWS role ARN from secrets for AWS credentials.
-
-    steps:  # Define the steps of the job.
-      - name: Checkout code  # Step for checking out the repository.
-        uses: actions/checkout@v2  # Use v2 of the checkout action.
-
-      - name: Configure AWS Credentials  # Step to configure AWS credentials.
-        uses: aws-actions/configure-aws-credentials@v3  # Use v3 of AWS credentials action.
-        with:  # Pass parameters to the AWS credentials action.
-          aws-region: us-east-1  # Set AWS region.
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}  # Specify the AWS role to assume.
-          role-session-name: GitHubActions  # Set the session name for the assumed role.
-
-      - name: Initialize Terraform  # Step to initialize Terraform.
-        run: terraform init  # Run terraform init command.
-        working-directory: ./root/main-eks-root  # Set the working directory for the command.
-
-      - name: Plan Terraform  # Step to plan Terraform deployment.
-        id: plan  # ID for the step, can be used to reference the step.
-        run: terraform plan -var-file="homework-project-vss.tfvars" -out=tfplan -no-color > plan-output.txt  # Run terraform plan and output to a file.
-        working-directory: ./root/main-eks-root  # Set the working directory for the command.
-
-      - name: Upload Terraform Plan Output  # Step to upload the plan output.
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'  # Condition to only run this step for pushes to main branch.
-        uses: actions/upload-artifact@v2  # Use v2 of upload-artifact action.
-        with:  # Pass parameters to the upload-artifact action.
-          name: terraform-plan-output  # Name of the artifact.
-          path: ./root/main-eks-root/plan-output.txt  # Path of the artifact to upload.
-
-      # Comment out the apply step to prevent resource creation
-      # - name: Apply Terraform  # Step to apply Terraform changes.
-      #   if: github.ref == 'refs/heads/main'  # Condition to only run this step for main branch.
-      #   run: terraform apply -auto-approve tfplan  # Run terraform apply with auto-approve.
-      #   working-directory: ./root/main-eks-root  # Set the working directory for the command.
-
-      - name: Terraform Destroy  # Step to destroy Terraform managed resources.
-        if: github.ref == 'refs/heads/main'  # Condition to only run this step for main branch.
-        run: terraform destroy -var-file="homework-project-vss.tfvars" -auto-approve  # Run terraform destroy with auto-approve.
-        working-directory: ./root/main-eks-root  # Set the working directory for the command.
-
 # # THIS IS .github/workflows/terraform-deploy.yaml
 
-# # Role_ARN is in secrets
+# name: Terraform Deployment Workflow  # Define the name of the GitHub Actions workflow.
 
-# name: Terraform Deployment Workflow
+# on:  # Specify the events that will trigger the workflow.
+#   push:  # Trigger the workflow on push events.
+#     branches: ["*"]  # Apply to pushes to all branches.
+#   workflow_dispatch:  # Allow manual triggering of the workflow from GitHub UI.
 
-# on:
-#   # Triggers the workflow on push or pull request events but only for the "main" branch
-#   push:
-#     branches: ["*"]
+# permissions:  # Define permissions for the workflow.
+#   id-token: write  # Allow writing an ID token for authentication.
+#   contents: read  # Allow reading the repository content.
 
-#   # Allows you to run this workflow manually from the Actions tab
-#   # workflow_dispatch:
+# jobs:  # Define the jobs that make up the workflow.
+#   deploy:  # Name of the job.
+#     runs-on: ubuntu-latest  # Specify the type of virtual host machine to run the job on (latest Ubuntu).
+#     environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}  # Set environment based on the branch.
+#     env:  # Define environment variables for the job.
+#       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}  # Set the AWS role ARN from secrets for AWS credentials.
 
-# permissions:
-#   id-token: write # This is required for requesting the JWT
-#   contents: read  # This is required for actions/checkout
+#     steps:  # Define the steps of the job.
+#       - name: Checkout code  # Step for checking out the repository.
+#         uses: actions/checkout@v2  # Use v2 of the checkout action.
 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
-#     environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
-#     env:
-#       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v2
-#       - name: Configure AWS Credentials
-#         uses: aws-actions/configure-aws-credentials@v3
-#         with:
-#           aws-region: us-east-1
-#           role-to-assume: ${{ env.AWS_ROLE_ARN }}
-#           role-session-name: GitHubActions
-#       # Additional steps follow
-      
-#       - name: clone repo 
-#         uses: actions/checkout@v4
+#       - name: Configure AWS Credentials  # Step to configure AWS credentials.
+#         uses: aws-actions/configure-aws-credentials@v3  # Use v3 of AWS credentials action.
+#         with:  # Pass parameters to the AWS credentials action.
+#           aws-region: us-east-1  # Set AWS region.
+#           role-to-assume: ${{ env.AWS_ROLE_ARN }}  # Specify the AWS role to assume.
+#           role-session-name: GitHubActions  # Set the session name for the assumed role.
 
-#       - name: initialize Terraform
-#         run: terraform init 
-#         working-directory: ./root/main-eks-root
-    
-#       - name: Plan Terraform
-#         id: plan
-#         run: |
-#           terraform plan -var-file="homework-project-vss.tfvars" -out=tfplan -no-color > plan-output.txt
-#           cat plan-output.txt
-#         working-directory: ./root/main-eks-root
-#         continue-on-error: true # This can be helpful to ensure the workflow continues even if the plan indicates changes
+#       - name: Initialize Terraform  # Step to initialize Terraform.
+#         run: terraform init  # Run terraform init command.
+#         working-directory: ./root/main-eks-root  # Set the working directory for the command.
 
-#       - name: Upload Terraform Plan Output
-#         uses: actions/upload-artifact@v2
-#         with:
-#           name: terraform-plan-output
-#           path: ./root/main-eks-root/plan-output.txt
+#       - name: Plan Terraform  # Step to plan Terraform deployment.
+#         id: plan  # ID for the step, can be used to reference the step.
+#         run: terraform plan -var-file="homework-project-vss.tfvars" -out=tfplan -no-color > plan-output.txt  # Run terraform plan and output to a file.
+#         working-directory: ./root/main-eks-root  # Set the working directory for the command.
 
-#       # - name: execute terraform
-#       #   run: terraform apply -auto-approve
-#       #   working-directory: ./root/main-eks-root
-
-
-
-
-# # THIS IS .github/workflows/terraform-deploy.yaml
-
-# name: Terraform Deployment Workflow
-
-# on:
-#   push:
-#     branches: ["*"]
-#   workflow_dispatch:
-
-# permissions:
-#   id-token: write
-#   contents: read
-
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
-#     environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
-#     env:
-#       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v2
-      
-#       - name: Configure AWS Credentials
-#         uses: aws-actions/configure-aws-credentials@v3
-#         with:
-#           aws-region: us-east-1
-#           role-to-assume: ${{ env.AWS_ROLE_ARN }}
-#           role-session-name: GitHubActions
-
-#       - name: Initialize Terraform
-#         run: terraform init
-#         working-directory: ./root/main-eks-root
-
-#       - name: Plan Terraform
-#         id: plan
-#         run: terraform plan -out=tfplan -no-color > plan-output.txt
-#         working-directory: ./root/main-eks-root
-
+#       - name: Upload Terraform Plan Output  # Step to upload the plan output.
+#         if: github.event_name == 'push' && github.ref == 'refs/heads/main'  # Condition to only run this step for pushes to main branch.
+#         uses: actions/upload-artifact@v2  # Use v2 of upload-artifact action.
+#         with:  # Pass parameters to the upload-artifact action.
+#           name: terraform-plan-output  # Name of the artifact.
+#           path: ./root/main-eks-root/plan-output.txt  # Path of the artifact to upload.
 
 #       # Comment out the apply step to prevent resource creation
-#       # - name: Apply Terraform
-#       #   if: github.ref == 'refs/heads/main'
-#       #   run: terraform apply -auto-approve tfplan
-#       #   working-directory: ./root/main-eks-root
+#       # - name: Apply Terraform  # Step to apply Terraform changes.
+#       #   if: github.ref == 'refs/heads/main'  # Condition to only run this step for main branch.
+#       #   run: terraform apply -auto-approve tfplan  # Run terraform apply with auto-approve.
+#       #   working-directory: ./root/main-eks-root  # Set the working directory for the command.
 
-#       - name: Upload Terraform Plan Output
-#         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-#         uses: actions/upload-artifact@v2
-#         with:
-#           name: terraform-plan-output
-#           path: ./root/main-eks-root/plan-output.txt
+#       - name: Terraform Destroy  # Step to destroy Terraform managed resources.
+#         if: github.ref == 'refs/heads/main'  # Condition to only run this step for main branch.
+#         run: terraform destroy -var-file="homework-project-vss.tfvars" -auto-approve  # Run terraform destroy with auto-approve.
+#         working-directory: ./root/main-eks-root  # Set the working directory for the command.
+
+# # # THIS IS .github/workflows/terraform-deploy.yaml
+
+# # # Role_ARN is in secrets
+
+# # name: Terraform Deployment Workflow
+
+# # on:
+# #   # Triggers the workflow on push or pull request events but only for the "main" branch
+# #   push:
+# #     branches: ["*"]
+
+# #   # Allows you to run this workflow manually from the Actions tab
+# #   # workflow_dispatch:
+
+# # permissions:
+# #   id-token: write # This is required for requesting the JWT
+# #   contents: read  # This is required for actions/checkout
+
+# # jobs:
+# #   deploy:
+# #     runs-on: ubuntu-latest
+# #     environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
+# #     env:
+# #       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+# #     steps:
+# #       - name: Checkout code
+# #         uses: actions/checkout@v2
+# #       - name: Configure AWS Credentials
+# #         uses: aws-actions/configure-aws-credentials@v3
+# #         with:
+# #           aws-region: us-east-1
+# #           role-to-assume: ${{ env.AWS_ROLE_ARN }}
+# #           role-session-name: GitHubActions
+# #       # Additional steps follow
+      
+# #       - name: clone repo 
+# #         uses: actions/checkout@v4
+
+# #       - name: initialize Terraform
+# #         run: terraform init 
+# #         working-directory: ./root/main-eks-root
+    
+# #       - name: Plan Terraform
+# #         id: plan
+# #         run: |
+# #           terraform plan -var-file="homework-project-vss.tfvars" -out=tfplan -no-color > plan-output.txt
+# #           cat plan-output.txt
+# #         working-directory: ./root/main-eks-root
+# #         continue-on-error: true # This can be helpful to ensure the workflow continues even if the plan indicates changes
+
+# #       - name: Upload Terraform Plan Output
+# #         uses: actions/upload-artifact@v2
+# #         with:
+# #           name: terraform-plan-output
+# #           path: ./root/main-eks-root/plan-output.txt
+
+# #       # - name: execute terraform
+# #       #   run: terraform apply -auto-approve
+# #       #   working-directory: ./root/main-eks-root
 
 
-#       # Add the destroy step
-#       - name: Terraform Destroy
-#         if: github.ref == 'refs/heads/main'
-#         run: terraform destroy -var-file="homework-project-vss.tfvars" -auto-approve
-#         working-directory: ./root/main-eks-root
+
+
+# # # THIS IS .github/workflows/terraform-deploy.yaml
+
+# # name: Terraform Deployment Workflow
+
+# # on:
+# #   push:
+# #     branches: ["*"]
+# #   workflow_dispatch:
+
+# # permissions:
+# #   id-token: write
+# #   contents: read
+
+# # jobs:
+# #   deploy:
+# #     runs-on: ubuntu-latest
+# #     environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
+# #     env:
+# #       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+# #     steps:
+# #       - name: Checkout code
+# #         uses: actions/checkout@v2
+      
+# #       - name: Configure AWS Credentials
+# #         uses: aws-actions/configure-aws-credentials@v3
+# #         with:
+# #           aws-region: us-east-1
+# #           role-to-assume: ${{ env.AWS_ROLE_ARN }}
+# #           role-session-name: GitHubActions
+
+# #       - name: Initialize Terraform
+# #         run: terraform init
+# #         working-directory: ./root/main-eks-root
+
+# #       - name: Plan Terraform
+# #         id: plan
+# #         run: terraform plan -out=tfplan -no-color > plan-output.txt
+# #         working-directory: ./root/main-eks-root
+
+
+# #       # Comment out the apply step to prevent resource creation
+# #       # - name: Apply Terraform
+# #       #   if: github.ref == 'refs/heads/main'
+# #       #   run: terraform apply -auto-approve tfplan
+# #       #   working-directory: ./root/main-eks-root
+
+# #       - name: Upload Terraform Plan Output
+# #         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+# #         uses: actions/upload-artifact@v2
+# #         with:
+# #           name: terraform-plan-output
+# #           path: ./root/main-eks-root/plan-output.txt
+
+
+# #       # Add the destroy step
+# #       - name: Terraform Destroy
+# #         if: github.ref == 'refs/heads/main'
+# #         run: terraform destroy -var-file="homework-project-vss.tfvars" -auto-approve
+# #         working-directory: ./root/main-eks-root
 
 
 
@@ -190,69 +190,69 @@ jobs:  # Define the jobs that make up the workflow.
 
 
 
-# # THIS IS .github/workflows/terraform-deploy.yaml
+# # # THIS IS .github/workflows/terraform-deploy.yaml
 
 
-# # Role_ARN is in secrets
+# # # Role_ARN is in secrets
 
-# name: Terraform Deployment Workflow
+# # name: Terraform Deployment Workflow
 
-# on:
-#   # Triggers the workflow on push or pull request events but only for the "main" branch
-#   push:
-#     branches: ["*"]
+# # on:
+# #   # Triggers the workflow on push or pull request events but only for the "main" branch
+# #   push:
+# #     branches: ["*"]
 
-#   # Allows you to run this workflow manually from the Actions tab
-#   # workflow_dispatch:
+# #   # Allows you to run this workflow manually from the Actions tab
+# #   # workflow_dispatch:
 
-# permissions:
-#   id-token: write # This is required for requesting the JWT
-#   contents: read  # This is required for actions/checkout
+# # permissions:
+# #   id-token: write # This is required for requesting the JWT
+# #   contents: read  # This is required for actions/checkout
 
 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
-#     environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
-#     env:
-#       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v2
-#       - name: Configure AWS Credentials
-#         uses: aws-actions/configure-aws-credentials@v3
-#         with:
-#           aws-region: us-east-1
-#           role-to-assume: ${{ env.AWS_ROLE_ARN }}
-#           role-session-name: GitHubActions
-#       # Additional steps follow
+# # jobs:
+# #   deploy:
+# #     runs-on: ubuntu-latest
+# #     environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
+# #     env:
+# #       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+# #     steps:
+# #       - name: Checkout code
+# #         uses: actions/checkout@v2
+# #       - name: Configure AWS Credentials
+# #         uses: aws-actions/configure-aws-credentials@v3
+# #         with:
+# #           aws-region: us-east-1
+# #           role-to-assume: ${{ env.AWS_ROLE_ARN }}
+# #           role-session-name: GitHubActions
+# #       # Additional steps follow
 
 
       
-#       - name: clone repo 
-#         uses: actions/checkout@v4
+# #       - name: clone repo 
+# #         uses: actions/checkout@v4
 
-#       - name: initialize Terraform
-#         run: terraform init 
-#         working-directory: ./root/main-eks-root
+# #       - name: initialize Terraform
+# #         run: terraform init 
+# #         working-directory: ./root/main-eks-root
 
     
 
-#       - name: Plan Terraform
-#         id: plan
-#         run: |
-#           terraform plan -out=tfplan -no-color > plan-output.txt
-#           cat plan-output.txt
-#         working-directory: ./root/main-eks-root
-#         continue-on-error: true # This can be helpful to ensure the workflow continues even if the plan indicates changes
+# #       - name: Plan Terraform
+# #         id: plan
+# #         run: |
+# #           terraform plan -out=tfplan -no-color > plan-output.txt
+# #           cat plan-output.txt
+# #         working-directory: ./root/main-eks-root
+# #         continue-on-error: true # This can be helpful to ensure the workflow continues even if the plan indicates changes
 
-#       - name: Upload Terraform Plan Output
-#         uses: actions/upload-artifact@v2
-#         with:
-#           name: terraform-plan-output
-#           path: ./root/main-eks-root/plan-output.txt
+# #       - name: Upload Terraform Plan Output
+# #         uses: actions/upload-artifact@v2
+# #         with:
+# #           name: terraform-plan-output
+# #           path: ./root/main-eks-root/plan-output.txt
 
 
-#       # - name: execute terraform
-#       #   run: terraform apply -auto-approve
-#       #   working-directory: ./root/main-eks-root
+# #       # - name: execute terraform
+# #       #   run: terraform apply -auto-approve
+# #       #   working-directory: ./root/main-eks-root
