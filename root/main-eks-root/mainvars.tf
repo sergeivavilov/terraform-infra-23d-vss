@@ -1,201 +1,352 @@
-#  This is the variables configuration file for the main EKS root module in the root/main-eks-root directory.
+##### EKS Cluster #####
 
-### EKS Cluster variables ###
-
-variable "eks_worker_role_name" {
-  description = "The name of the IAM role for the EKS worker nodes"  # Description of what the variable is used for.
-  type        = string  # Type specification for Terraform, string in this case.
-  default     = "eks-worker-role"  # Default value assigned to the variable.
+variable "cluster_name" {
+  type    = string
+  default = "project-x-dev"
 }
 
-variable "eks_name" {
-  type    = string  # Type of the variable.
-  default = "project-x-dev"  # Default value for the EKS cluster name.
+variable "cluster_version" {
+  type    = string
+  default = "1.29"
 }
 
-variable "eks_version" {
-  type    = string  # Indicates the variable stores a string.
-  default = "1.29"  # Kubernetes version used for the EKS cluster.
+variable "cluster_subnet_ids" {
+  type    = list(string)
+  default = ["subnet-0d5fc4ce23b5cb89a", "subnet-06e01dd0cc5e788b9"]
 }
 
-variable "eks_vpc_subnet_ids" {
-  type    = list(string)  # This variable will hold a list of strings.
-  default = ["subnet-0d5fc4ce23b5cb89a", "subnet-06e01dd0cc5e788b9"]  # Default subnets in us-east-1a and us-east-1b.
+variable "cluster_cidr" {
+  type    = string
+  default = "10.7.0.0/16"
 }
 
-variable "k8_net_config_cidr" {
-  type    = string  # Type of the variable is string.
-  default = "10.7.0.0/16"  # CIDR block for Kubernetes networking.
+variable "cluster_tag" {
+  type    = string
+  default = "project-x"
 }
 
-variable "tag_name" {
-  type    = string  # Type of the variable is string.
-  default = "project-x"  # Default tag name for the resources.
+##### Trust policy #####
+variable "policy_effect" {
+  type    = string
+  default = "Allow"
 }
 
-### Trust Policy variables ###
-
-variable "iam_pol_effect" {
-  type    = string  # Data type of the variable.
-  default = "Allow"  # Policy effect which typically could be 'Allow' or 'Deny'.
+variable "policy_type" {
+  type    = string
+  default = "Service"
 }
 
-variable "iam_pol_prin_type" {
-  type    = string  # Data type of the variable.
-  default = "Service"  # Principal type for the IAM policy, e.g., 'Service'.
+variable "policy_identifiers" {
+  type    = list(string)
+  default = ["eks.amazonaws.com"]
 }
 
-variable "iam_pol_prin_identifiers" {
-  type    = list(string)  # Data type is a list of strings.
-  default = ["eks.amazonaws.com"]  # Default service principal identifier for EKS.
+variable "policy_actions" {
+  type    = list(string)
+  default = ["sts:AssumeRole"]
 }
 
-variable "iam_pol_actions" {
-  type    = list(string)  # Type is a list of strings.
-  default = ["sts:AssumeRole"]  # Actions included in the IAM policy.
+##### IAM Role #####
+variable "role_name" {
+  type    = string
+  default = "project-x-dev-eks-iam-role"
 }
 
-### IAM role variables ###
-
-# Variable for specifying the name of the IAM role for GitHub Actions. This line is commented out.
-# variable "iam_role_name" {
-#   type = string
-#   default = "GitHubActionsTerraformIAMrole"  # Provides the default name of the IAM role for GitHub Actions.
-# }
-
-variable "iam_role_name" {
-  type    = string  # Specifies the variable type as string.
-  default = "project-x-dev-eks-iam-role"  # Default name for the IAM role used in EKS.
+##### Role policy attachment #####
+variable "attachment_policy_arn" {
+  type    = string
+  default = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
-### IAM role policy attachment variables ###
-
-variable "iam_role_policy_arn" {
-  type    = string  # The type of the variable is string.
-  default = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"  # ARN of the policy attached to the IAM role.
+##### EKS Cluster sg #####
+variable "eks_cluster_sg_name" {
+  type    = string
+  default = "EKS Cluster Security Group"
 }
 
-### EKS Cluster SG variables ###
-
-variable "eks_sg_name" {
-  type    = string  # Specifies the variable type as string.
-  default = "EKS Cluster Security Group"  # Name of the security group used for the EKS cluster.
+variable "eks_cluster_sg_description" {
+  type    = string
+  default = "Allow All inbound traffic from Self and all outbound traffic"
 }
 
-variable "eks_sg_description" {
-  type    = string  # Data type is string.
-  default = "Allow All inbound traffic from Self and all outbound traffic"  # Description of the security group's rules.
+variable "eks_cluster_sg_vpc_id" {
+  type    = string
+  default = "vpc-064f95e6b9ba1df03"
 }
 
-variable "eks_sg_vpc_id" {
-  type    = string  # Data type is string.
-  default = "vpc-064f95e6b9ba1df03"  # Default VPC ID where the security group will be created.
-}
-
-variable "eks_sg_tag" {
-  type    = map(string)  # Data type is a map of strings.
+variable "eks_cluster_sg_tags" {
+  type = map(string)
   default = {
-    Name                            = "eks-cluster-sg"  # Name tag for the security group.
-    "kubernetes.io/cluster/project-x-dev" = "owned"  # Kubernetes cluster tag.
-    "aws:eks:cluster-name"          = "project-x-dev"  # Tag specifying the name of the EKS cluster.
+    Name                                  = "eks-cluster-sg"
+    "kubernetes.io/cluster/project-x-dev" = "owned"
+    "aws:eks:cluster-name"                = "project-x-dev"
   }
 }
 
-variable "sg_all_port_protocol" {
-  type    = string  # Specifies the variable type as string.
-  default = "-1"  # This value represents all ports.
+variable "ingress_port_ipv4" {
+  type    = number
+  default = 0
 }
 
-variable "sg_all_ipv4_traffic" {
-  type    = string  # Type of the variable is string.
-  default = "0.0.0.0/0"  # Allows all IPv4 traffic.
+variable "ingress_protocol_ipv4" {
+  type    = string
+  default = "-1"
 }
 
-variable "sg_all_ipv6_traffic" {
-  type    = string  # Type of the variable is string.
-  default = "::/0"  # Allows all IPv6 traffic.
+variable "egress_cidr_ipv4" {
+  type    = string
+  default = "0.0.0.0/0"
 }
 
-variable "sg_allow_tls_port" {
-  type    = number  # The data type of this variable is number.
-  default = 443  # Default port number for TLS/SSL traffic.
+variable "egress_protocol_ipv4" {
+  type    = string
+  default = "-1"
 }
 
-### WORKERS variables ###
-
-variable "worker_lt_name_prefix" {
-  type    = string  # Type of the variable is string.
-  default = "project-x-eks-dev-worker-nodes"  # Default name prefix for EKS worker nodes.
+variable "egress_cidr_ipv6" {
+  type    = string
+  default = "::/0"
 }
 
-variable "worker_lt_inst_type" {
-  type    = string  # Specifies the variable type as string.
-  default = "t3.medium"  # Default instance type for the worker nodes.
+variable "egress_protocol_ipv6" {
+  type    = string
+  default = "-1"
 }
 
-### Worker ASG variables ###
 
-variable "worker_asg_desired_cap" {
-  type    = number  # Data type is number.
-  default = 2  # Desired capacity of the Auto Scaling Group.
+
+##### Workers LT #####
+
+# variable "eks_workers_lt_name" {
+#   type    = string
+#   default = "project-x-eks-dev-worker-nodes"
+# }
+
+# variable "eks_workers_lt_instance_type" {
+#   type    = string
+#   default = "t3.medium"
+# }
+
+##### Workers ASG #####
+
+# variable "capacity_rebalance" {
+#   type    = string
+#   default = "true"
+# }
+
+# variable "desired_capacity" {
+#   type    = number
+#   default = 2
+# }
+
+# variable "max_size" {
+#   type    = number
+#   default = 3
+# }
+
+# variable "min_size" {
+#   type    = number
+#   default = 1
+# }
+
+# variable "vpc_zone_identifier" {
+#   type    = list(string)
+#   default = ["subnet-0d5fc4ce23b5cb89a", "subnet-06e01dd0cc5e788b9"]
+# }
+
+# variable "on_demand_base_capacity" {
+#   type    = number
+#   default = 0
+# }
+
+# variable "on_demand_percentage_above_base_capacity" {
+#   type    = number
+#   default = 0
+# }
+
+# variable "spot_allocation_strategy" {
+#   type    = string
+#   default = "capacity-optimized"
+# }
+
+# variable "lt_override_instance_type_1" {
+#   type    = string
+#   default = "t3.medium"
+# }
+
+# variable "lt_override_weighted_capacity_1" {
+#   type    = string
+#   default = "2"
+# }
+
+# variable "lt_override_instance_type_2" {
+#   type    = string
+#   default = "t2.medium"
+# }
+
+# variable "lt_override_weighted_capacity_2" {
+#   type    = string
+#   default = "2"
+# }
+
+########## Worker Node Group ########### 
+
+
+##### EKS Workers IAM Role #####
+
+variable "eks_workers_iam_role_name" {
+  type    = string
+  default = "eks-workers"
 }
 
-variable "worker_asg_max_size" {
-  type    = number  # Type of the variable is number.
-  default = 3  # Maximum size of the Auto Scaling Group.
+variable "eks_workers_iam_role_action" {
+  type    = string
+  default = "sts:AssumeRole"
 }
 
-variable "worker_asg_min_size" {
-  type    = number  # Data type is number.
-  default = 1  # Minimum size of the Auto Scaling Group.
+variable "eks_workers_iam_role_effect" {
+  type    = string
+  default = "Allow"
 }
 
-### Worker ASG mixed instance policy variables ###
-
-variable "worker_asg_base_cap" {
-  type    = number  # Specifies the variable type as number.
-  default = 0  # Base capacity of on-demand instances.
+variable "eks_workers_iam_role_service" {
+  type    = string
+  default = "ec2.amazonaws.com"
 }
 
-variable "worker_asg_percent_base_cap" {
-  type    = number  # Type of the variable is number.
-  default = 0  # Percentage of additional capacity above the base on-demand capacity.
+variable "eks_workers_policy_attachment_arn" {
+  type    = string
+  default = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
 }
 
-variable "worker_asg_spot_strategy" {
-  type    = string  # Data type is string.
-  default = "capacity-optimized"  # Spot allocation strategy to optimize for capacity.
+variable "eks_cni_policy_attachment_arn" {
+  type    = string
+  default = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
 }
 
-### Worker ASG launch template variables ###
-
-variable "override_inst_type_1" {
-  type    = string  # Type of the variable is string.
-  default = "t3.medium"  # First instance type override in the launch template.
+variable "eks_autoscaling_policy_attachment_arn" {
+  type    = string
+  default = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+##### EKS Worker nodes #####
+variable "node_group_name" {
+  type    = string
+  default = "project-x-dev"
 }
 
-variable "override_weight_cap_1" {
-  type    = string  # Specifies the variable type as string.
-  default = "2"  # Weighted capacity for the first override instance type.
+variable "node_group_subnet_ids" {
+  type    = list(string)
+  default = ["subnet-0d5fc4ce23b5cb89a", "subnet-06e01dd0cc5e788b9"]
 }
 
-variable "override_inst_type_2" {
-  type    = string  # Type of the variable is string.
-  default = "t2.medium"  # Second instance type override in the launch template.
+variable "scaling_config_desired" {
+  type    = number
+  default = 2
 }
 
-variable "override_weight_cap_2" {
-  type    = string  # Specifies the variable type as string.
-  default = "2"  # Weighted capacity for the second override instance type.
+variable "scaling_config_max" {
+  type    = number
+  default = 3
 }
 
-variable "rds_master_username" {
-  description = "The master username for the RDS instance"  # Description of the variable.
-  type        = string  # Type of the variable is string.
+variable "scaling_config_min" {
+  type    = number
+  default = 1
 }
 
-variable "rds_master_password" {
-  description = "The master password for the RDS instance"  # Description of the variable.
-  type        = string  # Data type is string.
-  sensitive   = true  # Marks the variable as sensitive, which means it will not be logged or outputted in plaintext.
+variable "node_group_ami_type" {
+  type    = string
+  default = "AL2_x86_64"
+}
+
+variable "node_group_instance_types" {
+  type    = list(string)
+  default = ["t3.medium"]
+}
+
+
+##### RDS Variables #####
+
+variable "allocated_storage" {
+  type = string
+}
+
+variable "storage_type" {
+  type = string
+}
+
+variable "engine" {
+  type = string
+}
+
+variable "engine_version" {
+  type = string
+}
+
+variable "instance_class" {
+  type = string
+}
+
+variable "db_name" {
+  type = string
+}
+
+variable "identifier" {
+  type = string
+}
+
+variable "username" {
+  type = string
+}
+
+variable "manage_master_user_password" {
+  type = string
+}
+
+variable "backup_retention_period" {
+  type = string
+}
+
+variable "skip_final_snapshot" {
+  type = string
+}
+
+variable "rds_tags_name" {
+  type = string
+}
+
+variable "rds_sg_name" {
+  type = string
+}
+
+variable "rds_sg_description" {
+  type = string
+}
+
+variable "rds_sg_vpc" {
+  type = string
+}
+
+variable "rds_ingress_port" {
+  type = string
+}
+
+variable "rds_ingress_protocol" {
+  type = string
+}
+
+variable "rds_egress_port" {
+  type = string
+}
+
+variable "rds_egress_protocol" {
+  type = string
+}
+
+variable "rds_egress_cidr" {
+  type = list(string)
+}
+
+variable "rds_sg_tags_name" {
+  type = string
 }
