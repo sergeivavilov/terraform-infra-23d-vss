@@ -80,3 +80,4 @@ module "rds-postgres" {
   rds_egress_cidr             = var.rds_egress_cidr
   rds_sg_tags_name            = var.rds_sg_tags_name
 }
+
