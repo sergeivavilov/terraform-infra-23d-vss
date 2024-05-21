@@ -1,1384 +1,584 @@
 .
 ├── README.md
+├── all_project_contents.txt
 ├── eks-module
-│   ├── configmap.tf
+│   ├── aws_auth.tf
 │   ├── eks.tf
-│   ├── outputs.tf
+│   ├── node-group.tf
 │   ├── variables.tf
 │   └── workers.tf
 ├── nginx-deployment.yaml
 ├── output.txt
-├── rds-postgres-module
-│   ├── rds.tf
-│   └── vars.tf
+├── rds-mysql-module
+│   ├── main.tf
+│   └── variables.tf
 └── root
     └── main-eks-root
-        ├── homework-project-vss.tfvars
+        ├── homework-project.vss.auto.tfvars
         ├── main.tf
         ├── mainvars.tf
         └── providers.tf
 
-5 directories, 14 files
+5 directories, 15 files
 .github/workflows/terraform-deploy.yaml
-# THIS IS .github/workflows/terraform-deploy.yaml
 
-name: Terraform Deployment Workflow  # Define the name of the GitHub Actions workflow.
+name: Terraform Deployment Workflow
 
-on:  # Specify the events that will trigger the workflow.
-  push:  # Trigger the workflow on push events.
-    branches: ["*"]  # Apply to pushes to all branches.
-  workflow_dispatch:  # Allow manual triggering of the workflow from GitHub UI.
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: ["*"]
 
-permissions:  # Define permissions for the workflow.
-  id-token: write  # Allow writing an ID token for authentication.
-  contents: read  # Allow reading the repository content.
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read  # This is required for actions/checkout
 
-jobs:  # Define the jobs that make up the workflow.
-  deploy:  # Name of the job.
-    runs-on: ubuntu-latest  # Specify the type of virtual host machine to run the job on (latest Ubuntu).
-    environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}  # Set environment based on the branch.
-    env:  # Define environment variables for the job.
-      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}  # Set the AWS role ARN from secrets for AWS credentials.
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Select environment based on branch pushed
+    environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
 
-    steps:  # Define the steps of the job.
-      - name: Checkout code  # Step for checking out the repository.
-        uses: actions/checkout@v2  # Use v2 of the checkout action.
+    steps:
+      - name: AWS Loggin
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ vars.AWS_IAM_ROLE }}
+          role-session-name: githubactionsbot 
+          aws-region: "us-east-1"
 
-      - name: Configure AWS Credentials  # Step to configure AWS credentials.
-        uses: aws-actions/configure-aws-credentials@v3  # Use v3 of AWS credentials action.
-        with:  # Pass parameters to the AWS credentials action.
-          aws-region: us-east-1  # Set AWS region.
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}  # Specify the AWS role to assume.
-          role-session-name: GitHubActions  # Set the session name for the assumed role.
+      - name: clone repo 
+        uses: actions/checkout@v4
 
-      - name: Initialize Terraform  # Step to initialize Terraform.
-        run: terraform init  # Run terraform init command.
-        working-directory: ./root/main-eks-root  # Set the working directory for the command.
+      - name: initialize Terraform
+        run: terraform init 
+        working-directory: ./root/main-eks-root
 
-      - name: Plan Terraform  # Step to plan Terraform deployment.
-        id: plan  # ID for the step, can be used to reference the step.
-        run: terraform plan -var-file="homework-project-vss.tfvars" -out=tfplan -no-color > plan-output.txt  # Run terraform plan and output to a file.
-        working-directory: ./root/main-eks-root  # Set the working directory for the command.
+      - name: Plan execution
+        run: terraform plan -var-file="homework-project.vss.auto.tfvars"
+        working-directory: ./root/main-eks-root
 
-      - name: Upload Terraform Plan Output  # Step to upload the plan output.
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'  # Condition to only run this step for pushes to main branch.
-        uses: actions/upload-artifact@v2  # Use v2 of upload-artifact action.
-        with:  # Pass parameters to the upload-artifact action.
-          name: terraform-plan-output  # Name of the artifact.
-          path: ./root/main-eks-root/plan-output.txt  # Path of the artifact to upload.
-
-      # Comment out the apply step to prevent resource creation
-      # - name: Apply Terraform  # Step to apply Terraform changes.
-      #   if: github.ref == 'refs/heads/main'  # Condition to only run this step for main branch.
-      #   run: terraform apply -auto-approve tfplan  # Run terraform apply with auto-approve.
-      #   working-directory: ./root/main-eks-root  # Set the working directory for the command.
-
-      - name: Terraform Destroy  # Step to destroy Terraform managed resources.
-        if: github.ref == 'refs/heads/main'  # Condition to only run this step for main branch.
-        run: terraform destroy -var-file="homework-project-vss.tfvars" -auto-approve  # Run terraform destroy with auto-approve.
-        working-directory: ./root/main-eks-root  # Set the working directory for the command.
-
-# # THIS IS .github/workflows/terraform-deploy.yaml
-
-# # Role_ARN is in secrets
-
-# name: Terraform Deployment Workflow
-
-# on:
-#   # Triggers the workflow on push or pull request events but only for the "main" branch
-#   push:
-#     branches: ["*"]
-
-#   # Allows you to run this workflow manually from the Actions tab
-#   # workflow_dispatch:
-
-# permissions:
-#   id-token: write # This is required for requesting the JWT
-#   contents: read  # This is required for actions/checkout
-
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
-#     environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
-#     env:
-#       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v2
-#       - name: Configure AWS Credentials
-#         uses: aws-actions/configure-aws-credentials@v3
-#         with:
-#           aws-region: us-east-1
-#           role-to-assume: ${{ env.AWS_ROLE_ARN }}
-#           role-session-name: GitHubActions
-#       # Additional steps follow
+      # - name: execute terraform
+      #   run: terraform apply -var-file="homework-project.notyouraverageusername.auto.tfvars" -auto-approve
+      #   working-directory: ./root/main-eks-root
       
-#       - name: clone repo 
-#         uses: actions/checkout@v4
+      # - name: destroy infrastructure
+      #   run: terraform destroy -auto-approve
+      #   working-directory: ./root/main-eks-root./eks-module/workers.tf
 
-#       - name: initialize Terraform
-#         run: terraform init 
-#         working-directory: ./root/main-eks-root
-    
-#       - name: Plan Terraform
-#         id: plan
-#         run: |
-#           terraform plan -var-file="homework-project-vss.tfvars" -out=tfplan -no-color > plan-output.txt
-#           cat plan-output.txt
-#         working-directory: ./root/main-eks-root
-#         continue-on-error: true # This can be helpful to ensure the workflow continues even if the plan indicates changes
-
-#       - name: Upload Terraform Plan Output
-#         uses: actions/upload-artifact@v2
-#         with:
-#           name: terraform-plan-output
-#           path: ./root/main-eks-root/plan-output.txt
-
-#       # - name: execute terraform
-#       #   run: terraform apply -auto-approve
-#       #   working-directory: ./root/main-eks-root
-
-
-
-
-# # THIS IS .github/workflows/terraform-deploy.yaml
-
-# name: Terraform Deployment Workflow
-
-# on:
-#   push:
-#     branches: ["*"]
-#   workflow_dispatch:
-
-# permissions:
-#   id-token: write
-#   contents: read
-
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
-#     environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
-#     env:
-#       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v2
-      
-#       - name: Configure AWS Credentials
-#         uses: aws-actions/configure-aws-credentials@v3
-#         with:
-#           aws-region: us-east-1
-#           role-to-assume: ${{ env.AWS_ROLE_ARN }}
-#           role-session-name: GitHubActions
-
-#       - name: Initialize Terraform
-#         run: terraform init
-#         working-directory: ./root/main-eks-root
-
-#       - name: Plan Terraform
-#         id: plan
-#         run: terraform plan -out=tfplan -no-color > plan-output.txt
-#         working-directory: ./root/main-eks-root
-
-
-#       # Comment out the apply step to prevent resource creation
-#       # - name: Apply Terraform
-#       #   if: github.ref == 'refs/heads/main'
-#       #   run: terraform apply -auto-approve tfplan
-#       #   working-directory: ./root/main-eks-root
-
-#       - name: Upload Terraform Plan Output
-#         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-#         uses: actions/upload-artifact@v2
-#         with:
-#           name: terraform-plan-output
-#           path: ./root/main-eks-root/plan-output.txt
-
-
-#       # Add the destroy step
-#       - name: Terraform Destroy
-#         if: github.ref == 'refs/heads/main'
-#         run: terraform destroy -var-file="homework-project-vss.tfvars" -auto-approve
-#         working-directory: ./root/main-eks-root
-
-
-
-
-
-
-
-
-
-
-
-
-# # THIS IS .github/workflows/terraform-deploy.yaml
-
-
-# # Role_ARN is in secrets
-
-# name: Terraform Deployment Workflow
-
-# on:
-#   # Triggers the workflow on push or pull request events but only for the "main" branch
-#   push:
-#     branches: ["*"]
-
-#   # Allows you to run this workflow manually from the Actions tab
-#   # workflow_dispatch:
-
-# permissions:
-#   id-token: write # This is required for requesting the JWT
-#   contents: read  # This is required for actions/checkout
-
-
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
-#     environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
-#     env:
-#       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v2
-#       - name: Configure AWS Credentials
-#         uses: aws-actions/configure-aws-credentials@v3
-#         with:
-#           aws-region: us-east-1
-#           role-to-assume: ${{ env.AWS_ROLE_ARN }}
-#           role-session-name: GitHubActions
-#       # Additional steps follow
-
-
-      
-#       - name: clone repo 
-#         uses: actions/checkout@v4
-
-#       - name: initialize Terraform
-#         run: terraform init 
-#         working-directory: ./root/main-eks-root
-
-    
-
-#       - name: Plan Terraform
-#         id: plan
-#         run: |
-#           terraform plan -out=tfplan -no-color > plan-output.txt
-#           cat plan-output.txt
-#         working-directory: ./root/main-eks-root
-#         continue-on-error: true # This can be helpful to ensure the workflow continues even if the plan indicates changes
-
-#       - name: Upload Terraform Plan Output
-#         uses: actions/upload-artifact@v2
-#         with:
-#           name: terraform-plan-output
-#           path: ./root/main-eks-root/plan-output.txt
-
-
-#       # - name: execute terraform
-#       #   run: terraform apply -auto-approve
-#       #   working-directory: ./root/main-eks-root
-./rds-postgres-module/rds.tf
-# Define an AWS DB instance for a reviews application.
-resource "aws_db_instance" "reviews_app_db" {
-  allocated_storage    = var.allocated_storage  # The amount of allocated storage in gigabytes.
-  storage_type         = var.storage_type  # The type of storage (e.g., standard, gp2, io1).
-  engine               = var.engine  # The database engine type (e.g., MySQL, PostgreSQL).
-  engine_version       = var.engine_version  # The version of the database engine.
-  instance_class       = var.instance_class  # The compute and memory capacity of the DB instance.
-  db_name              = var.db_name  # The name of the database to create when the DB instance is created.
-  identifier           = var.identifier  # The identifier for the DB instance.
-  username             = var.rds_master_username  # The master user name for the DB instance.
-  password             = var.rds_master_password  # The password for the master database user. Managed securely.
-  #   manage_master_user_password = var.manage_master_user_password  # Whether to manage the master user password with AWS Secrets Manager.
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]  # List of VPC security group IDs to associate.
-  db_subnet_group_name = aws_db_subnet_group.postgres_subnet_group.name  # The name of the DB subnet group.
-
-  backup_retention_period = var.backup_retention_period  # The number of days to retain backups.
-  skip_final_snapshot     = var.skip_final_snapshot  # Determines whether a final DB snapshot is created before deletion.
-
-  tags = {
-    Name = var.rds_tags_name  # Tags assigned to the DB instance.
-  }
-}
-
-# Define a DB subnet group for PostgreSQL.
-resource "aws_db_subnet_group" "postgres_subnet_group" {
-  name       = "postgres_group"  # The name of the DB subnet group.
-  subnet_ids = var.subnet_ids  # The IDs of the subnets in the VPC.
-
-  tags = {
-    Name = "My DB subnet group"  # Tags assigned to the DB subnet group.
-  }
-}
-
-# Define a security group for the RDS instance.
-resource "aws_security_group" "rds_sg" {
-  name        = var.rds_sg_name  # The name of the security group.
-  description = var.rds_sg_description  # Description of the security group.
-  vpc_id      = var.rds_sg_vpc  # The VPC ID where the security group is created.
-
-  # Defines ingress rules for the security group.
-  ingress {
-    from_port       = var.rds_ingress_port  # The starting port of ingress traffic.
-    to_port         = var.rds_ingress_port  # The ending port of ingress traffic.
-    protocol        = var.rds_ingress_protocol  # The protocol used for ingress traffic.
-    security_groups = var.eks_cluster_sg_id  # The IDs of security groups that allow ingress traffic.
-  }
-
-  # Defines egress rules for the security group.
-  egress {
-    from_port   = var.rds_egress_port  # The starting port of egress traffic.
-    to_port     = var.rds_egress_port  # The ending port of egress traffic.
-    protocol    = var.rds_egress_protocol  # The protocol used for egress traffic.
-    cidr_blocks = var.rds_egress_cidr  # CIDR blocks to which the egress rule applies.
-  }
-
-  tags = {
-    Name = var.rds_sg_tags_name  # Tags assigned to the security group.
-  }
-}
-./rds-postgres-module/vars.tf
-# Variable definitions for Terraform configuration.
-
-# Security group ID variable for the EKS cluster.
-variable "eks_cluster_sg_id" {
-  description = "Security group ID of the EKS cluster"  # Description of what the variable represents.
-  type        = list(string)  # Type declaration (list of strings).
-}
-
-# Subnet IDs variable for the RDS subnet group.
-variable "subnet_ids" {
-  description = "Subnet IDs for the RDS subnet group"  # Description of what the variable represents.
-  type        = list(string)  # Type declaration (list of strings).
-}
-
-# Allocated storage variable for the RDS instance.
-variable "allocated_storage" {
-  description = "The allocated storage in gigabytes"  # Description of what the variable represents.
-  type        = number  # Type declaration (number).
-}
-
-# Storage type variable for the RDS instance.
-variable "storage_type" {
-  description = "The storage type (e.g., gp2, io1)"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-}
-
-# Database engine type variable.
-variable "engine" {
-  description = "The database engine (e.g., postgres)"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-}
-
-# Database engine version variable.
-variable "engine_version" {
-  description = "The database engine version"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-}
-
-# Instance class variable for the RDS instance.
-variable "instance_class" {
-  description = "The instance class for the RDS instance"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-}
-
-# Database name variable.
-variable "db_name" {
-  description = "The name of the database to create"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-}
-
-# Identifier variable for the RDS instance.
-variable "identifier" {
-  description = "The identifier for the RDS instance"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-}
-
-# Master username variable for the RDS instance.
-variable "rds_master_username" {
-  description = "The master username for the RDS instance"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-}
-
-# Master password variable for the RDS instance.
-variable "rds_master_password" {
-  description = "The master password for the RDS instance"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-  sensitive   = true  # Marks the variable as sensitive.
-}
-
-# Variable to decide whether to manage the master user password with AWS Secrets Manager.
-variable "manage_master_user_password" {
-  description = "Whether to manage the master user password with AWS Secrets Manager"  # Description of what the variable represents.
-  type        = bool  # Type declaration (boolean).
-  default     = true  # Default value (true).
-}
-
-# Backup retention period variable for the RDS instance.
-variable "backup_retention_period" {
-  description = "The number of days to retain backups"  # Description of what the variable represents.
-  type        = number  # Type declaration (number).
-}
-
-# Variable to decide whether to skip the final snapshot when deleting the RDS instance.
-variable "skip_final_snapshot" {
-  description = "Whether to skip the final snapshot when deleting the instance"  # Description of what the variable represents.
-  type        = bool  # Type declaration (boolean).
-}
-
-# Tags name variable for the RDS instance.
-variable "rds_tags_name" {
-  description = "The name tag for the RDS instance"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-}
-
-# Security group name variable for the RDS instance.
-variable "rds_sg_name" {
-  description = "The name of the security group for the RDS instance"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-}
-
-# Security group description variable for the RDS instance.
-variable "rds_sg_description" {
-  description = "The description of the security group for the RDS instance"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-}
-
-# VPC ID variable for the security group.
-variable "rds_sg_vpc" {
-  description = "The VPC ID for the security group"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-}
-
-# Ingress port variable for the RDS security group.
-variable "rds_ingress_port" {
-  description = "The ingress port for the RDS security group"  # Description of what the variable represents.
-  type        = number  # Type declaration (number).
-  default     = 5432  # Default value (5432).
-}
-
-# Ingress protocol variable for the RDS security group.
-variable "rds_ingress_protocol" {
-  description = "The ingress protocol for the RDS security group"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-  default     = "tcp"  # Default value ("tcp").
-}
-
-# Egress port variable for the RDS security group.
-variable "rds_egress_port" {
-  description = "The egress port for the RDS security group"  # Description of what the variable represents.
-  type        = number  # Type declaration (number).
-  default     = 0  # Default value (0).
-}
-
-# Egress protocol variable for the RDS security group.
-variable "rds_egress_protocol" {
-  description = "The egress protocol for the RDS security group"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-  default     = "-1"  # Default value ("-1").
-}
-
-# Egress CIDR blocks variable for the RDS security group.
-variable "rds_egress_cidr" {
-  description = "The egress CIDR blocks for the RDS security group"  # Description of what the variable represents.
-  type        = list(string)  # Type declaration (list of strings).
-  default     = ["0.0.0.0/0"]  # Default value ("0.0.0.0/0").
-}
-
-# Tags name variable for the RDS security group.
-variable "rds_sg_tags_name" {
-  description = "The name tag for the RDS security group"  # Description of what the variable represents.
-  type        = string  # Type declaration (string).
-}
-./eks-module/outputs.tf
-# This is a commented-out output for the security group ID of EKS worker nodes.
-# output "worker_security_group_id" {
-#   value = aws_security_group.eks_worker_sg.id  # Retrieves the ID of the EKS worker security group.
-# }
-
-# Output the ARN of the IAM role for EKS worker nodes.
-output "worker_role_arn" {
-  value = aws_iam_role.eks_worker_role.arn  # Retrieves the ARN of the IAM role assigned to EKS worker nodes.
-}
-
-./eks-module/workers.tf
-# Define local variable for AMI version used in fetching the AMI ID.
-locals {
-  version = "1.29"  # Specifies the version of the Amazon Linux 2 AMI.
-}
-
-# Fetch the AMI ID for the specified version from the AWS SSM Parameter Store.
 data "aws_ssm_parameter" "eks_ami_id" {
-  name = "/aws/service/eks/optimized-ami/${local.version}/amazon-linux-2/recommended/image_id"  # SSM parameter name.
+  name = "/aws/service/eks/optimized-ami/1.29/amazon-linux-2/recommended/image_id"
 }
 
-# Define a launch template for EKS worker nodes.
 resource "aws_launch_template" "eks_workers" {
-  name_prefix   = var.worker_lt_name_prefix  # Prefix for launch template names, ensures unique names.
-  image_id      = data.aws_ssm_parameter.eks_ami_id.value  # AMI ID fetched from SSM.
-  instance_type = var.worker_lt_inst_type  # Instance type for worker nodes.
+  name_prefix   = "${var.name}-eks-worker-nodes"
+  image_id      = data.aws_ssm_parameter.eks_ami_id.value
+  instance_type = var.instance_type
+  depends_on = [null_resource.update_aws_auth,# kubernetes_config_map.aws_auth,
+    aws_iam_role_policy_attachment.example-AmazonEKSWorkerNodePolicy,
+    aws_iam_role_policy_attachment.example-AmazonEKS_CNI_Policy,
+  aws_iam_role_policy_attachment.example-AmazonEC2ContainerRegistryReadOnly]
 
-  # User data scripts are commented out; they configure the instance on launch.
-  # #!/bin/bash
-  # set -o xtrace
-  # /etc/eks/bootstrap.sh project-x-dev
-
-  # IAM policies commented out, intended for attachment to the role.
-  # iam::aws:policy/AmazonEKSWorkerNodePolicy"
-  # iam::aws:policy/AmazonEKS_CNI_Policy"
-  # iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  vpc_security_group_ids = [aws_security_group.eks_worker_sg.id]
+  user_data = base64encode(<<-EOF
+#!/bin/bash
+set -o xtrace
+/etc/eks/bootstrap.sh ${var.name}
+EOF
+  )
 }
 
-# Define an Auto Scaling Group (ASG) for managing EKS worker nodes.
-resource "aws_autoscaling_group" "eks_workers" {
-  capacity_rebalance  = true  # Enables capacity rebalancing for Spot Instances.
-  desired_capacity    = var.worker_asg_desired_cap  # Desired number of instances in the ASG.
-  max_size            = var.worker_asg_max_size  # Maximum number of instances in the ASG.
-  min_size            = var.worker_asg_min_size  # Minimum number of instances in the ASG.
-  vpc_zone_identifier = var.eks_vpc_subnet_ids  # Subnet IDs for the instances in the ASG.
+resource "aws_security_group" "eks_worker_sg" {
+  name        = "eks-worker-sg"
+  description = "Security group for EKS worker nodes"
 
-  # Defines the mixed instances policy for cost optimization.
-  mixed_instances_policy {
-    instances_distribution {
-      on_demand_base_capacity                  = var.worker_asg_base_cap  # Minimum on-demand instances.
-      on_demand_percentage_above_base_capacity = var.worker_asg_percent_base_cap  # Percentage of on-demand instances above the base.
-      spot_allocation_strategy                 = var.worker_asg_spot_strategy  # Spot allocation strategy to use.
-    }
+  vpc_id = var.vpc_id
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-    # Defines the launch template and its overrides for the ASG.
-    launch_template {
-      launch_template_specification {
-        launch_template_id = aws_launch_template.eks_workers.id  # References the launch template created above.
-      }
-
-      # Override configurations for different instance types.
-      override {
-        instance_type     = var.override_inst_type_1  # First instance type override.
-        weighted_capacity = var.override_weight_cap_1  # Weighted capacity for scaling.
-      }
-
-      override {
-        instance_type     = var.override_inst_type_2  # Second instance type override.
-        weighted_capacity = var.override_weight_cap_2  # Weighted capacity for scaling.
-      }
-    }
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
+output "worker_sg" {
+  value = aws_security_group.eks_worker_sg
+}
+./eks-module/node-group.tf
+resource "aws_eks_node_group" "project-x-node-group" {
+  cluster_name    = var.name
+  node_group_name = "${var.name}-node-group"
+  node_role_arn   = aws_iam_role.example.arn
+  subnet_ids      = var.subnet_ids
 
-# The following resources are commented out; they are examples of defining and attaching IAM roles and policies.
-# resource "aws_iam_role" "example" {
-#   name = "eks-node-group-example"
-
-#   assume_role_policy = jsonencode({
-#     Statement = [{
-#       Action = "sts:AssumeRole"
-#       Effect = "Allow"
-#       Principal = {
-#         Service = "ec2.amazonaws.com"
-#       }
-#     }]
-#     Version = "2012-10-17"
-#   })
-# }
-
-# resource "aws_iam_role_policy_attachment" "example-AmazonEKSWorkerNodePolicy" {
-#   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-#   role       = aws_iam_role.example.name
-# }
-
-# resource "aws_iam_role_policy_attachment" "example-AmazonEKS_CNI_Policy" {
-#   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-#   role       = aws_iam_role.example.name
-# }
-
-# resource "aws_iam_role_policy_attachment" "example-AmazonEC2ContainerRegistryReadOnly" {
-#   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-#   role       = aws_iam_role.example.name
-# }
-
-./eks-module/configmap.tf
-# Define a Kubernetes ConfigMap named 'aws-auth' in the 'kube-system' namespace.
-resource "kubernetes_config_map" "aws_auth" {
-  metadata {
-    name      = "aws-auth"  # Name of the ConfigMap.
-    namespace = "kube-system"  # Namespace where the ConfigMap is deployed.
+  scaling_config {
+    desired_size = var.capacity[0]
+    max_size     = var.capacity[1]
+    min_size     = var.capacity[2]
   }
 
-  data = {
-    mapRoles = <<-EOT
-- rolearn: ${aws_iam_role.eks_worker_role.arn}
-  username: system:node:{{EC2PrivateDNSName}}  # Mapping the role to a Kubernetes username.
-  groups:  # Defining Kubernetes groups that the role belongs to.
-    - system:bootstrappers  # Kubernetes group for node bootstrap operations.
-    - system:nodes  # Kubernetes group for nodes.
-EOT
+  launch_template {
+    version = aws_launch_template.eks_workers.latest_version
+    id      = aws_launch_template.eks_workers.id
   }
+
+  update_config {
+    max_unavailable = 1
+  }
+
+  # Ensure that IAM Role permissions are created before and deleted after EKS Node Group handling.
+  depends_on = [
+    aws_iam_role_policy_attachment.example-AmazonEKSWorkerNodePolicy,
+    aws_iam_role_policy_attachment.example-AmazonEKS_CNI_Policy,
+    aws_iam_role_policy_attachment.example-AmazonEC2ContainerRegistryReadOnly,
+    null_resource.update_aws_auth
+    #kubernetes_config_map.aws_auth
+  ]
 }
 
-# Define an AWS IAM role for EKS workers.
-resource "aws_iam_role" "eks_worker_role" {
-  name = "eks-worker-role"  # Name of the IAM role.
 
-  # IAM policy document that allows EC2 instances to assume this role.
+resource "aws_iam_role" "example" {
+  name = "eks-node-group-example"
+
   assume_role_policy = jsonencode({
-    Version = "2012-10-17"  # Policy language version.
-    Statement = [
-      {
-        Effect = "Allow"  # Allows action.
-        Principal = {
-          Service = "ec2.amazonaws.com"  # Service allowed to assume this role.
-        }
-        Action = "sts:AssumeRole"  # Action that is allowed.
-      },
-    ]
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+    Version = "2012-10-17"
   })
+}
 
-  tags = {
-    Name = "eks-worker-role"  # Tag attached to the role.
+resource "aws_iam_role_policy_attachment" "example-AmazonEKSWorkerNodePolicy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.example.name
+}
+
+resource "aws_iam_role_policy_attachment" "example-AmazonEKS_CNI_Policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.example.name
+}
+
+resource "aws_iam_role_policy_attachment" "example-AmazonEC2ContainerRegistryReadOnly" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.example.name
+}
+
+
+./eks-module/aws_auth.tf
+# this script fixes error: configmaps "aws-auth" is forbidden: User "system:anonymous" cannot get resource "configmaps"
+
+# return current region details
+data "aws_region" "current" {}
+
+# return current user details along with account details
+data "aws_caller_identity" "current" {}
+
+# current account number
+locals {
+  account = data.aws_caller_identity.current.account_id
+}
+
+resource "null_resource" "update_aws_auth" {
+  depends_on = [aws_eks_cluster.cluster]
+
+# code below allows nodes to runn bootstrap script, and allows custom set of users even crossaccount to communicate to our cluster
+  provisioner "local-exec" {
+    command = <<-EOT
+    sleep 50
+    aws eks update-kubeconfig --name ${var.name} --region ${data.aws_region.current.name}
+    cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+data:
+  mapRoles: |
+    - groups:
+      - system:bootstrappers
+      - system:nodes
+      rolearn: ${aws_iam_role.example.arn}
+      username: system:node:{{EC2PrivateDNSName}}
+    - groups:
+      - system:masters
+      rolearn: arn:aws:iam::730335359268:user/vss1
+      username: adminRoleUser
+    - groups:
+      - system:masters
+      rolearn: arn:aws:iam::730335359268:role/GitHubActionsCICDrole
+      username: CICDrole
+EOF
+    EOT
   }
 }
-
-# Attach the Amazon EKS Worker Node Policy to the EKS worker role.
-resource "aws_iam_role_policy_attachment" "eks_worker_node_policy" {
-  role       = aws_iam_role.eks_worker_role.name  # IAM role to attach the policy to.
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"  # ARN of the policy to attach.
-}
-
-# Attach the Amazon EKS CNI Policy to the EKS worker role.
-resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
-  role       = aws_iam_role.eks_worker_role.name  # IAM role to attach the policy to.
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"  # ARN of the policy to attach.
-}
-
-# Attach the Amazon EC2 Container Registry Read-Only Policy to the EKS worker role.
-resource "aws_iam_role_policy_attachment" "ec2_container_registry_readonly" {
-  role       = aws_iam_role.eks_worker_role.name  # IAM role to attach the policy to.
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"  # ARN of the policy to attach.
-}
-
 ./eks-module/variables.tf
-# File identifier and location within the project structure.
-# this is : terraform-infra-23d-vss/eks-module/variables.tf
+variable "name" {
 
-### EKS Cluster variables ###
-
-# Defines the IAM role name for EKS worker nodes.
-variable "eks_worker_role_name" {
-  description = "The name of the IAM role for the EKS worker nodes"
-  type        = string
-  default     = "eks-worker-role"
 }
+variable "CIDR" {
 
-# Defines the name of the EKS cluster.
-variable "eks_name" {
-  type    = string
-  default = "project-x-dev"
 }
+variable "instance_type" {
 
-# Defines the version of the EKS cluster.
-variable "eks_version" {
-  type    = string
-  default = "1.29"
 }
+variable "cluster_tag" {
 
-# List of subnet IDs for the EKS cluster.
-variable "eks_vpc_subnet_ids" {
-  type    = list(string)
-  default = ["subnet-0d5fc4ce23b5cb89a", "subnet-06e01dd0cc5e788b9"]  # Subnets in us-east-1a and us-east-1b
 }
+variable "vpc_id" {
 
-# CIDR block for the Kubernetes network configuration.
-variable "k8_net_config_cidr" {
-  type    = string
-  default = "10.7.0.0/16"
 }
+variable "subnet_ids" {
 
-# Defines a tag for resources associated with the EKS cluster.
-variable "tag_name" {
-  type    = string
-  default = "project-x"
 }
+variable "alternative_instance_type" {
 
-### Trust Policy variables ###
-
-# Permission effect for the IAM role's trust policy.
-variable "iam_pol_effect" {
-  type    = string
-  default = "Allow"
 }
+variable "capacity" {
 
-# The type of principal that can assume the IAM role.
-variable "iam_pol_prin_type" {
-  type    = string
-  default = "Service"
 }
+variable "spot_allocation_strategy" {
 
-# Identifiers for the principal that can assume the IAM role.
-variable "iam_pol_prin_identifiers" {
-  type    = list(string)
-  default = ["eks.amazonaws.com"]
 }
+variable "availability-zone" {
 
-# Actions allowed by the trust policy.
-variable "iam_pol_actions" {
-  type    = list(string)
-  default = ["sts:AssumeRole"]
 }
+variable "subnet_ip_range_1" {
 
-### IAM role variables ###
-
-# Commented out: Previous default value for an IAM role name.
-# variable "iam_role_name" {
-#   type    = string
-#   default = "GitHubActionsTerraformIAMrole"  # Name of the IAM role for GitHub Actions
-# }
-
-# Defines the name for the IAM role associated with the EKS cluster.
-variable "iam_role_name" {
-  type    = string
-  default = "project-x-dev-eks-iam-role"
 }
+variable "subnet_ip_range_2" {
 
-### IAM role policy attachment variables ###
-
-# ARN of the policy attached to the IAM role.
-variable "iam_role_policy_arn" {
-  type    = string
-  default = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-}
-
-### EKS Cluster SG variables ###
-
-# Name of the security group associated with the EKS cluster.
-variable "eks_sg_name" {
-  type    = string
-  default = "EKS Cluster Security Group"
-}
-
-# Description of the EKS cluster security group.
-variable "eks_sg_description" {
-  type    = string
-  default = "Allow All inbound traffic from Self and all outbound traffic"
-}
-
-# VPC ID where the security group is to be created.
-variable "eks_sg_vpc_id" {
-  type    = string
-  default = "vpc-064f95e6b9ba1df03"  # default VPC ID
-}
-
-# Tags attached to the EKS cluster security group.
-variable "eks_sg_tag" {
-  type    = map(string)
-  default = {
-    Name                            = "eks-cluster-sg"
-    "kubernetes.io/cluster/project-x-dev" = "owned"
-    "aws:eks:cluster-name"          = "project-x-dev"
-  }
-}
-
-# Protocol used for the security group, allowing all ports.
-variable "sg_all_port_protocol" {
-  type    = string
-  default = "-1"  # semantically equivalent to all ports
-}
-
-# Allows all IPv4 traffic within the security group.
-variable "sg_all_ipv4_traffic" {
-  type    = string
-  default = "0.0.0.0/0"
-}
-
-# Allows all IPv6 traffic within the security group.
-variable "sg_all_ipv6_traffic" {
-  type    = string
-  default = "::/0"
-}
-
-# TLS port allowed in the security group.
-variable "sg_allow_tls_port" {
-  type    = number
-  default = 443
-}
-
-### WORKERS variables ###
-
-# Prefix for the name of the launch templates for worker nodes.
-variable "worker_lt_name_prefix" {
-  type    = string
-  default = "project-x-eks-dev-worker-nodes"
-}
-
-# Instance type for the worker nodes.
-variable "worker_lt_inst_type" {
-  type    = string
-  default = "t3.medium"
-}
-
-### Worker ASG variables ###
-
-# Desired capacity of the Auto Scaling Group for worker nodes.
-variable "worker_asg_desired_cap" {
-  type    = number
-  default = 2
-}
-
-# Maximum size of the Auto Scaling Group for worker nodes.
-variable "worker_asg_max_size" {
-  type    = number
-  default = 3
-}
-
-# Minimum size of the Auto Scaling Group for worker nodes.
-variable "worker_asg_min_size" {
-  type    = number
-  default = 1
-}
-
-### Worker ASG mixed instance policy variables ###
-
-# Base capacity for on-demand instances in the Auto Scaling Group.
-variable "worker_asg_base_cap" {
-  type    = number
-  default = 0
-}
-
-# Percentage of additional capacity above the base for on-demand instances.
-variable "worker_asg_percent_base_cap" {
-  type    = number
-  default = 0
-}
-
-# Spot allocation strategy for the Auto Scaling Group.
-variable "worker_asg_spot_strategy" {
-  type    = string
-  default = "capacity-optimized"
-}
-
-### Worker ASG launch template variables ###
-
-# First override instance type in the launch template.
-variable "override_inst_type_1" {
-  type    = string
-  default = "t3.medium"
-}
-
-# Weighted capacity for the first override instance type.
-variable "override_weight_cap_1" {
-  type    = string
-  default = "2"
-}
-
-# Second override instance type in the launch template.
-variable "override_inst_type_2" {
-  type    = string
-  default = "t2.medium"
-}
-
-# Weighted capacity for the second override instance type.
-variable "override_weight_cap_2" {
-  type    = string
-  default = "2"
-}
-
-### RDS variables ###
-
-# Master username for the RDS instance.
-variable "rds_master_username" {
-  description = "The master username for the RDS instance"
-  type        = string
-}
-
-# Master password for the RDS instance, marked as sensitive.
-variable "rds_master_password" {
-  description = "The master password for the RDS instance"
-  type        = string
-  sensitive   = true
 }
 
 ./eks-module/eks.tf
-# Define the AWS EKS cluster with specific configurations.
 resource "aws_eks_cluster" "cluster" {
-  name     = var.eks_name  # Name of the EKS cluster.
-  role_arn = aws_iam_role.eks_cluster_role.arn  # ARN of the IAM role for the EKS cluster.
-  version  = var.eks_version  # Version of Kubernetes to use for the EKS cluster.
+  name     = var.name
+  role_arn = aws_iam_role.eks_cluster_role.arn
+  version  = "1.29"
 
-  # Configuration for the VPC settings of the EKS cluster.
   vpc_config {
-    subnet_ids         = var.eks_vpc_subnet_ids  # List of subnet IDs for the EKS cluster.
-    security_group_ids = [aws_security_group.eks_cluster_sg.id]  # List of security group IDs attached to the EKS cluster.
+    subnet_ids         = var.subnet_ids
+    security_group_ids = [aws_security_group.eks_cluster_sg.id]
   }
-
-  # Configuration for the Kubernetes network settings within the EKS cluster.
   kubernetes_network_config {
-    service_ipv4_cidr = var.k8_net_config_cidr  # CIDR block for Kubernetes service IP addresses.
+    service_ipv4_cidr = var.CIDR
   }
 
-  # Ensures that the specified IAM role permissions are correctly set up before creating the EKS cluster.
+  # make sure to add this so the cluster creates after the role exists
   depends_on = [
     aws_iam_role_policy_attachment.eks_cluster_role-AmazonEKSClusterPolicy
   ]
 
-  # Tags to assign to the EKS cluster for identification and management.
   tags = {
-    Name = var.tag_name  # Tag with the name of the EKS cluster.
+    Name = var.cluster_tag
   }
 }
 
-# Define the trust policy for the EKS cluster IAM role.
-data "aws_iam_policy_document" "assume_role" {
-  # Statement block within the policy document.
-  statement {
-    effect = var.iam_pol_effect  # Effect of the statement, typically 'Allow'.
 
-    # Defines the principal that can assume this role.
+# trust policy for the role
+data "aws_iam_policy_document" "assume_role" {
+  statement {
+    effect = "Allow"
+
     principals {
-      type        = var.iam_pol_prin_type  # Type of principal, such as 'Service'.
-      identifiers = var.iam_pol_prin_identifiers  # Identifiers of the principal, e.g., 'eks.amazonaws.com'.
+      type        = "Service"
+      identifiers = ["eks.amazonaws.com"]
     }
 
-    actions = var.iam_pol_actions  # Actions allowed by the policy, typically 'sts:AssumeRole'.
+    actions = ["sts:AssumeRole"]
   }
 }
 
-# Create the IAM role for the EKS cluster.
+# create IAM role
 resource "aws_iam_role" "eks_cluster_role" {
-  name               = var.iam_role_name  # Name of the IAM role.
-  assume_role_policy = data.aws_iam_policy_document.assume_role.json  # JSON version of the policy document.
-
-  tags = {
-    Name = "eks-cluster-role"  # Tag attached to the IAM role.
-  }
+  name               = "${var.name}-eks-iam-role"
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
 }
 
-# Attach a policy to the IAM role for the EKS cluster.
 resource "aws_iam_role_policy_attachment" "eks_cluster_role-AmazonEKSClusterPolicy" {
-  role       = aws_iam_role.eks_cluster_role.name  # Reference to the IAM role.
-  policy_arn = var.iam_role_policy_arn  # ARN of the policy to attach.
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.eks_cluster_role.name
 }
 
-# Define a security group for the EKS cluster.
+
+# security group for cluster
 resource "aws_security_group" "eks_cluster_sg" {
-  name        = var.eks_sg_name  # Name of the security group.
-  description = var.eks_sg_description  # Description of the security group.
-  vpc_id      = var.eks_sg_vpc_id  # VPC ID where the security group is created.
+  name        = "EKS updated group"
+  description = "Security group for all inbound and outbound traffic for EKS"
+  vpc_id      = var.vpc_id
+}
+resource "aws_vpc_security_group_ingress_rule" "allow_worker_traffic" {
+  security_group_id = aws_security_group.eks_cluster_sg.id
+  from_port   = 0
+  ip_protocol = "tcp"
+  to_port     = 65535
+  referenced_security_group_id = aws_security_group.eks_worker_sg.id
+}
+resource "aws_vpc_security_group_ingress_rule" "allow_self_traffic" {
+  security_group_id = aws_security_group.eks_cluster_sg.id
+  from_port   = 0
+  ip_protocol = "tcp"
+  to_port     = 65535
+  referenced_security_group_id = aws_security_group.eks_cluster_sg.id
+} 
 
-  tags = var.eks_sg_tag  # Tags attached to the security group.
+# CNI add-on that is missing from EKS configuration
+resource "aws_eks_addon" "cni_pluggin" {
+  cluster_name  = aws_eks_cluster.cluster.name
+  addon_name    = "vpc-cni"
+  addon_version = "v1.18.1-eksbuild.1"
+  depends_on    = [aws_eks_cluster.cluster]
+}
+resource "aws_eks_addon" "kube_proxy" {
+  cluster_name  = aws_eks_cluster.cluster.name
+  addon_name    = "kube-proxy"
+  addon_version = "v1.29.1-eksbuild.2" 
+  depends_on    = [aws_eks_cluster.cluster]
 }
 
-# Define an ingress rule for the EKS cluster security group to allow TLS traffic.
-resource "aws_vpc_security_group_ingress_rule" "allow_tls_ipv4" {
-  security_group_id             = aws_security_group.eks_cluster_sg.id  # ID of the security group.
-  referenced_security_group_id  = aws_security_group.eks_cluster_sg.id  # ID of the security group to reference.
-  from_port                     = var.sg_allow_tls_port  # Starting port range (TLS port).
-  ip_protocol                   = "tcp"  # Protocol used.
-  to_port                       = var.sg_allow_tls_port  # Ending port range (TLS port).
-}
-
-# Define an egress rule for the EKS cluster security group to allow all outbound IPv4 traffic.
-resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4" {
-  security_group_id = aws_security_group.eks_cluster_sg.id  # ID of the security group.
-  cidr_ipv4         = var.sg_all_ipv4_traffic  # CIDR block for outbound traffic.
-  ip_protocol       = var.sg_all_port_protocol  # Protocol used, typically '-1' for all.
-}
-
-# Define an egress rule for the EKS cluster security group to allow all outbound IPv6 traffic.
-resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv6" {
-  security_group_id = aws_security_group.eks_cluster_sg.id  # ID of the security group.
-  cidr_ipv6         = var.sg_all_ipv6_traffic  # CIDR block for outbound traffic.
-  ip_protocol       = var.sg_all_port_protocol  # Protocol used, typically '-1' for all.
-}
-
-# Define a security group for EKS worker nodes.
-resource "aws_security_group" "eks_worker_sg" {
-  name        = "eks-worker-sg"  # Name of the security group.
-  description = "Security group for EKS worker nodes"  # Description of the security group.
-  vpc_id      = var.eks_sg_vpc_id  # VPC ID where the security group is created.
-
-  # Ingress rule to allow SSH access.
-  ingress {
-    from_port   = 22  # SSH port.
-    to_port     = 22  # SSH port.
-    protocol    = "tcp"  # Protocol used.
-    cidr_blocks = ["0.0.0.0/0"]  # CIDR block allowing access from any IP.
-  }
-
-  # Ingress rule to allow HTTPS access.
-  ingress {
-    from_port   = 443  # HTTPS port.
-    to_port     = 443  # HTTPS port.
-    protocol    = "tcp"  # Protocol used.
-    cidr_blocks = ["0.0.0.0/0"]  # CIDR block allowing access from any IP.
-  }
-
-  # Egress rule to allow all outbound traffic.
-  egress {
-    from_port   = 0  # All ports.
-    to_port     = 0  # All ports.
-    protocol    = "-1"  # All protocols.
-    cidr_blocks = ["0.0.0.0/0"]  # CIDR block allowing access to any IP.
-  }
-
-  tags = {
-    Name = "eks-worker-sg"  # Tag attached to the security group.
-  }
-}
-
-# Output the endpoint for the EKS cluster.
 output "endpoint" {
-  value = aws_eks_cluster.cluster.endpoint  # Endpoint of the EKS cluster.
+  value = aws_eks_cluster.cluster.endpoint
 }
 
-# Output the certificate authority data for the EKS cluster.
 output "kubeconfig-certificate-authority-data" {
-  value = aws_eks_cluster.cluster.certificate_authority[0].data  # Certificate authority data.
+  value = aws_eks_cluster.cluster.certificate_authority
 }
 
-# Output the ID of the security group for the EKS worker nodes.
-output "worker_security_group_id" {
-  value = [aws_security_group.eks_worker_sg.id]  # ID of the security group.
+./rds-mysql-module/main.tf
+resource "aws_db_instance" "rds_instance" {
+  identifier              = var.db_instance_identifier
+  allocated_storage       = var.db_allocated_storage
+  db_name                 = var.db_name
+  engine                  = var.engine
+  engine_version          = var.engine_version
+  instance_class          = var.instance_class
+  username                = var.db_username
+  backup_retention_period = var.backup_retention_period
+  skip_final_snapshot         = true
+  vpc_security_group_ids      = [aws_security_group.rds-sg.id]
+  manage_master_user_password = true
+  db_subnet_group_name        = aws_db_subnet_group.db_subnet_group.name
+  auto_minor_version_upgrade  = true
 }
 
-# The following resources were commented out:
-# 
-# resource "aws_iam_role" "example" {
-#   name = "eks-node-group-example"
-# 
-#   assume_role_policy = jsonencode({
-#     Statement = [{
-#       Action = "sts:AssumeRole"
-#       Effect = "Allow"
-#       Principal = {
-#         Service = "ec2.amazonaws.com"
-#       }
-#     }]
-#     Version = "2012-10-17"
-#   })
-# }
-# 
-# resource "aws_iam_role_policy_attachment" "example-AmazonEKSWorkerNodePolicy" {
-#   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-#   role       = aws_iam_role.example.name
-# }
-# 
-# resource "aws_iam_role_policy_attachment" "example-AmazonEKS_CNI_Policy" {
-#   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-#   role       = aws_iam_role.example.name
-# }
-# 
-# resource "aws_iam_role_policy_attachment" "example-AmazonEC2ContainerRegistryReadOnly" {
-#   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-#   role       = aws_iam_role.example.name
-# }
+resource "aws_security_group" "rds-sg" {
+  name   = "rds_sg"
+  vpc_id = var.vpc_id
 
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [var.worker_sg]
+
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"] # All outbound traffic allowed
+  }
+  tags = {
+    Name = "rds_sg"
+  }
+}
+
+resource "aws_db_subnet_group" "db_subnet_group" {
+  name       = var.db_subnet_group_name
+  subnet_ids = var.subnet_ids
+}
+
+# this secret will hold all connection info except password
+# password will be auto generated by rds and stored in separate secret
+resource "aws_secretsmanager_secret" "rds_login" {
+  name        = "RDS_connection_final"
+  description = "RDS credentials"
+  recovery_window_in_days = 0 # will delete secret right away, probably not a good idea for production
+}
+
+resource "aws_secretsmanager_secret_version" "RDS_connection_points" {
+  secret_id = aws_secretsmanager_secret.rds_login.id
+  secret_string = jsonencode({
+    DB_USERNAME = var.db_username
+    DB_ENDPOINT = aws_db_instance.rds_instance.endpoint
+    DB_NAME     = var.db_name
+  })
+}
+./rds-mysql-module/variables.tf
+variable "db_instance_identifier" {
+
+}
+variable "db_allocated_storage" {
+
+}
+variable "db_name" {
+
+}
+variable "engine" {
+
+}
+variable "engine_version" {
+
+}
+variable "instance_class" {
+
+}
+variable "db_username" {
+
+}
+variable "backup_retention_period" {
+
+}
+variable "vpc_id" {
+
+}
+variable "db_subnet_group_name" {
+
+}
+variable "subnet_ids" {
+
+}
+variable "worker_sg" {
+
+}
 ./root/main-eks-root/main.tf
-# Define the main EKS cluster module using a local source path.
-module "project-x-eks-cluster" {
-  source = "../../eks-module"  # Path to the EKS module source code.
+# module "project-x-eks-cluster" {
+#   source                    = "../../eks-module"
+#   name                      = var.name
+#   CIDR                      = var.CIDR
+#   instance_type             = var.instance_type
+#   cluster_tag               = var.cluster_tag
+#   vpc_id                    = var.vpc_id
+#   subnet_ids                = var.subnet_ids
+#   alternative_instance_type = var.alternative_instance_type
+#   capacity                  = var.capacity # capacity list: desired, max, min
+#   spot_allocation_strategy  = var.spot_allocation_strategy
+#   availability-zone         = var.availability-zone
+#   subnet_ip_range_1         = var.subnet_ip_range_1
+#   subnet_ip_range_2         = var.subnet_ip_range_2
+# }
 
-  # Assign values from variables to the EKS cluster module.
-  eks_name                  = var.eks_name  # Name of the EKS cluster.
-  eks_version               = var.eks_version  # Kubernetes version for the EKS cluster.
-  eks_vpc_subnet_ids        = var.eks_vpc_subnet_ids  # Subnet IDs for the EKS cluster.
-  k8_net_config_cidr        = var.k8_net_config_cidr  # CIDR for Kubernetes network configuration.
-  tag_name                  = var.tag_name  # General tag applied to resources.
-  iam_pol_effect            = var.iam_pol_effect  # Effect for the IAM policy (Allow or Deny).
-  iam_pol_prin_type         = var.iam_pol_prin_type  # Type of principal (e.g., Service).
-  iam_pol_prin_identifiers  = var.iam_pol_prin_identifiers  # Identifiers for the IAM policy principal.
-  iam_pol_actions           = var.iam_pol_actions  # Actions allowed by the IAM policy.
-  iam_role_name             = var.iam_role_name  # Name of the IAM role associated with the cluster.
-  iam_role_policy_arn       = var.iam_role_policy_arn  # ARN of the IAM policy attached to the role.
-  eks_sg_name               = var.eks_sg_name  # Name of the security group for the EKS cluster.
-  eks_sg_description        = var.eks_sg_description  # Description of the security group.
-  eks_sg_vpc_id             = var.eks_sg_vpc_id  # VPC ID where the security group is created.
-  eks_sg_tag                = var.eks_sg_tag  # Tags associated with the security group.
-  sg_allow_tls_port         = var.sg_allow_tls_port  # TLS port to allow through the security group.
-  sg_all_ipv4_traffic       = var.sg_all_ipv4_traffic  # Allow all IPv4 traffic.
-  sg_all_port_protocol      = var.sg_all_port_protocol  # Protocol for the port configuration.
-  sg_all_ipv6_traffic       = var.sg_all_ipv6_traffic  # Allow all IPv6 traffic.
-  eks_worker_role_name      = var.eks_worker_role_name  # Name of the worker role in the EKS cluster.
 
-  # Worker nodes configuration.
-  worker_lt_name_prefix     = var.worker_lt_name_prefix  # Prefix for the launch template names.
-  worker_lt_inst_type       = var.worker_lt_inst_type  # Instance type for the worker nodes.
-  worker_asg_desired_cap    = var.worker_asg_desired_cap  # Desired capacity of the auto-scaling group.
-  worker_asg_max_size       = var.worker_asg_max_size  # Maximum size of the auto-scaling group.
-  worker_asg_min_size       = var.worker_asg_min_size  # Minimum size of the auto-scaling group.
-  worker_asg_base_cap       = var.worker_asg_base_cap  # Base on-demand capacity before using spot instances.
-  worker_asg_percent_base_cap = var.worker_asg_percent_base_cap  # Percentage of on-demand instances above the base capacity.
-  worker_asg_spot_strategy  = var.worker_asg_spot_strategy  # Spot instance strategy for the auto-scaling group.
-  override_inst_type_1      = var.override_inst_type_1  # First instance type override for mixed instances.
-  override_weight_cap_1     = var.override_weight_cap_1  # Weighted capacity for the first override instance type.
-  override_inst_type_2      = var.override_inst_type_2  # Second instance type override for mixed instances.
-  override_weight_cap_2     = var.override_weight_cap_2  # Weighted capacity for the second override instance type.
-
-  # RDS configuration passed as parameters to the module.
-  rds_master_username       = var.rds_master_username  # Username for the master user of the RDS instance.
-  rds_master_password       = var.rds_master_password  # Password for the master user of the RDS instance.
-}
-
-# Define the RDS PostgreSQL module with configuration parameters.
-module "rds_postgres" {
-  source = "../../rds-postgres-module"  # Path to the RDS PostgreSQL module source code.
-
-  # Assign values from variables and outputs to the RDS PostgreSQL module.
-  eks_cluster_sg_id           = module.project-x-eks-cluster.worker_security_group_id  # Security group ID from the EKS module.
-  subnet_ids                  = ["subnet-0d5fc4ce23b5cb89a", "subnet-06e01dd0cc5e788b9"]  # Subnets for the RDS instance.
-  allocated_storage           = 20  # Allocated storage in GB for the RDS instance.
-  storage_type                = "gp2"  # Storage type for the RDS instance.
-  engine                      = "postgres"  # Database engine type.
-  engine_version              = "16.2"  # Version of the database engine.
-  instance_class              = "db.t3.micro"  # Instance class for the RDS instance.
-  db_name                     = "reviews_app_data"  # Database name.
-  identifier                  = "reviews-app-db"  # Identifier for the RDS instance.
-  rds_master_username         = var.rds_master_username  # Username for the RDS master user.
-  rds_master_password         = var.rds_master_password  # Password for the RDS master user.
-  manage_master_user_password = true  # Whether to manage the master user password with AWS Secrets Manager.
-  backup_retention_period     = 7  # Number of days to retain backups.
-  skip_final_snapshot         = true  # Whether to skip the final snapshot upon deletion.
-  rds_tags_name               = "reviews-app-db"  # Tag name for the RDS instance.
-  rds_sg_name                 = "rds-postgres-sg"  # Name of the security group for the RDS instance.
-  rds_sg_description          = "Security group for RDS PostgreSQL"  # Description of the RDS security group.
-  rds_sg_vpc                  = "vpc-064f95e6b9ba1df03"  # VPC ID for the security group.
-  rds_ingress_port            = 5432  # Ingress port for PostgreSQL.
-  rds_ingress_protocol        = "tcp"  # Ingress protocol for PostgreSQL.
-  rds_egress_port             = 0  # Egress port, set to 0 for all ports.
-  rds_egress_protocol         = "-1"  # Egress protocol, set to '-1' for all protocols.
-  rds_egress_cidr             = ["0.0.0.0/0"]  # CIDR blocks for egress rules.
-  rds_sg_tags_name            = "rds-postgres-sg"  # Tag name for the RDS security group.
-}
-
+# module "rds-mysql" {
+#   source                  = "../../rds-mysql-module"
+#   backup_retention_period = var.backup_retention_period
+#   subnet_ids              = var.subnet_ids
+#   engine                  = var.engine
+#   engine_version          = var.engine_version
+#   vpc_id                  = var.vpc_id
+#   worker_sg               = module.project-x-eks-cluster.worker_sg.id
+#   db_name                 = var.db_name
+#   instance_class          = var.instance_class
+#   db_username             = var.db_username
+#   db_instance_identifier  = var.db_instance_identifier
+#   db_allocated_storage    = var.db_allocated_storage
+#   db_subnet_group_name    = var.db_subnet_group_name
+# }
 ./root/main-eks-root/providers.tf
-# Providers.tf - Configuration file specifying providers and their settings.
-
-# Configure the AWS provider.
+# Provider
 provider "aws" {
-  region = "us-east-1"  # AWS region where the resources will be managed.
+  region = "us-east-1"
 }
 
-# Terraform state backend configuration.
 terraform {
   backend "s3" {
-    bucket  = "githubactions-terraform-task"  # S3 bucket name for storing Terraform state files.
-    key     = "terraform.tfstate"  # Path to the state file within the S3 bucket.
-    region  = "us-east-1"  # AWS region where the S3 bucket is located.
-    encrypt = true  # Enables encryption at rest for the state file stored in S3.
+    bucket = "githubactions-terrafrom-task"
+    key    = "terraform.tfstate"
+    region = "us-east-1"
   }
 }
 
-# Configure the Kubernetes provider.
-provider "kubernetes" {
-  host                   = module.project-x-eks-cluster.endpoint  # The API server URL, fetched from the EKS cluster module.
-  cluster_ca_certificate = base64decode(module.project-x-eks-cluster.kubeconfig-certificate-authority-data)  # CA certificate used to authenticate with the Kubernetes cluster, decoded.
-  token                  = data.aws_eks_cluster_auth.cluster.token  # Token used for authentication with the Kubernetes cluster.
+# this provider required for configmap creation
+terraform {
+  required_providers {
+    kubernetes = {
+      source = "hashicorp/kubernetes"
+    }
+  }
 }
 
-# Fetch authentication data for an AWS EKS cluster.
-data "aws_eks_cluster_auth" "cluster" {
-  name = var.eks_name  # Name of the EKS cluster for which to fetch authentication data.
+provider "kubernetes" {
+  host                   = module.project-x-eks-cluster.endpoint
+  cluster_ca_certificate = base64decode(module.project-x-eks-cluster.kubeconfig-certificate-authority-data[0].data)
 }
 
 ./root/main-eks-root/mainvars.tf
-#  This is the variables configuration file for the main EKS root module in the root/main-eks-root directory.
+variable "name" {
 
-### EKS Cluster variables ###
+}
+variable "CIDR" {
 
-variable "eks_worker_role_name" {
-  description = "The name of the IAM role for the EKS worker nodes"  # Description of what the variable is used for.
-  type        = string  # Type specification for Terraform, string in this case.
-  default     = "eks-worker-role"  # Default value assigned to the variable.
+}
+variable "instance_type" {
+
+}
+variable "cluster_tag" {
+
+}
+variable "vpc_id" {
+
+}
+variable "subnet_ids" {
+
+}
+variable "alternative_instance_type" {
+
+}
+variable "capacity" {
+
+}
+variable "spot_allocation_strategy" {
+
+}
+variable "availability-zone" {
+
+}
+variable "subnet_ip_range_1" {
+
 }
 
-variable "eks_name" {
-  type    = string  # Type of the variable.
-  default = "project-x-dev"  # Default value for the EKS cluster name.
+variable "subnet_ip_range_2" {
+
 }
 
-variable "eks_version" {
-  type    = string  # Indicates the variable stores a string.
-  default = "1.29"  # Kubernetes version used for the EKS cluster.
+
+# variables for RDS database
+
+variable "db_instance_identifier" {
+
+}
+variable "db_allocated_storage" {
+
+}
+variable "db_name" {
+
+}
+variable "engine" {
+
+}
+variable "engine_version" {
+
+}
+variable "instance_class" {
+
+}
+variable "db_username" {
+
+}
+variable "backup_retention_period" {
+
 }
 
-variable "eks_vpc_subnet_ids" {
-  type    = list(string)  # This variable will hold a list of strings.
-  default = ["subnet-0d5fc4ce23b5cb89a", "subnet-06e01dd0cc5e788b9"]  # Default subnets in us-east-1a and us-east-1b.
+variable "db_subnet_group_name" {
+
 }
-
-variable "k8_net_config_cidr" {
-  type    = string  # Type of the variable is string.
-  default = "10.7.0.0/16"  # CIDR block for Kubernetes networking.
-}
-
-variable "tag_name" {
-  type    = string  # Type of the variable is string.
-  default = "project-x"  # Default tag name for the resources.
-}
-
-### Trust Policy variables ###
-
-variable "iam_pol_effect" {
-  type    = string  # Data type of the variable.
-  default = "Allow"  # Policy effect which typically could be 'Allow' or 'Deny'.
-}
-
-variable "iam_pol_prin_type" {
-  type    = string  # Data type of the variable.
-  default = "Service"  # Principal type for the IAM policy, e.g., 'Service'.
-}
-
-variable "iam_pol_prin_identifiers" {
-  type    = list(string)  # Data type is a list of strings.
-  default = ["eks.amazonaws.com"]  # Default service principal identifier for EKS.
-}
-
-variable "iam_pol_actions" {
-  type    = list(string)  # Type is a list of strings.
-  default = ["sts:AssumeRole"]  # Actions included in the IAM policy.
-}
-
-### IAM role variables ###
-
-# Variable for specifying the name of the IAM role for GitHub Actions. This line is commented out.
-# variable "iam_role_name" {
-#   type = string
-#   default = "GitHubActionsTerraformIAMrole"  # Provides the default name of the IAM role for GitHub Actions.
-# }
-
-variable "iam_role_name" {
-  type    = string  # Specifies the variable type as string.
-  default = "project-x-dev-eks-iam-role"  # Default name for the IAM role used in EKS.
-}
-
-### IAM role policy attachment variables ###
-
-variable "iam_role_policy_arn" {
-  type    = string  # The type of the variable is string.
-  default = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"  # ARN of the policy attached to the IAM role.
-}
-
-### EKS Cluster SG variables ###
-
-variable "eks_sg_name" {
-  type    = string  # Specifies the variable type as string.
-  default = "EKS Cluster Security Group"  # Name of the security group used for the EKS cluster.
-}
-
-variable "eks_sg_description" {
-  type    = string  # Data type is string.
-  default = "Allow All inbound traffic from Self and all outbound traffic"  # Description of the security group's rules.
-}
-
-variable "eks_sg_vpc_id" {
-  type    = string  # Data type is string.
-  default = "vpc-064f95e6b9ba1df03"  # Default VPC ID where the security group will be created.
-}
-
-variable "eks_sg_tag" {
-  type    = map(string)  # Data type is a map of strings.
-  default = {
-    Name                            = "eks-cluster-sg"  # Name tag for the security group.
-    "kubernetes.io/cluster/project-x-dev" = "owned"  # Kubernetes cluster tag.
-    "aws:eks:cluster-name"          = "project-x-dev"  # Tag specifying the name of the EKS cluster.
-  }
-}
-
-variable "sg_all_port_protocol" {
-  type    = string  # Specifies the variable type as string.
-  default = "-1"  # This value represents all ports.
-}
-
-variable "sg_all_ipv4_traffic" {
-  type    = string  # Type of the variable is string.
-  default = "0.0.0.0/0"  # Allows all IPv4 traffic.
-}
-
-variable "sg_all_ipv6_traffic" {
-  type    = string  # Type of the variable is string.
-  default = "::/0"  # Allows all IPv6 traffic.
-}
-
-variable "sg_allow_tls_port" {
-  type    = number  # The data type of this variable is number.
-  default = 443  # Default port number for TLS/SSL traffic.
-}
-
-### WORKERS variables ###
-
-variable "worker_lt_name_prefix" {
-  type    = string  # Type of the variable is string.
-  default = "project-x-eks-dev-worker-nodes"  # Default name prefix for EKS worker nodes.
-}
-
-variable "worker_lt_inst_type" {
-  type    = string  # Specifies the variable type as string.
-  default = "t3.medium"  # Default instance type for the worker nodes.
-}
-
-### Worker ASG variables ###
-
-variable "worker_asg_desired_cap" {
-  type    = number  # Data type is number.
-  default = 2  # Desired capacity of the Auto Scaling Group.
-}
-
-variable "worker_asg_max_size" {
-  type    = number  # Type of the variable is number.
-  default = 3  # Maximum size of the Auto Scaling Group.
-}
-
-variable "worker_asg_min_size" {
-  type    = number  # Data type is number.
-  default = 1  # Minimum size of the Auto Scaling Group.
-}
-
-### Worker ASG mixed instance policy variables ###
-
-variable "worker_asg_base_cap" {
-  type    = number  # Specifies the variable type as number.
-  default = 0  # Base capacity of on-demand instances.
-}
-
-variable "worker_asg_percent_base_cap" {
-  type    = number  # Type of the variable is number.
-  default = 0  # Percentage of additional capacity above the base on-demand capacity.
-}
-
-variable "worker_asg_spot_strategy" {
-  type    = string  # Data type is string.
-  default = "capacity-optimized"  # Spot allocation strategy to optimize for capacity.
-}
-
-### Worker ASG launch template variables ###
-
-variable "override_inst_type_1" {
-  type    = string  # Type of the variable is string.
-  default = "t3.medium"  # First instance type override in the launch template.
-}
-
-variable "override_weight_cap_1" {
-  type    = string  # Specifies the variable type as string.
-  default = "2"  # Weighted capacity for the first override instance type.
-}
-
-variable "override_inst_type_2" {
-  type    = string  # Type of the variable is string.
-  default = "t2.medium"  # Second instance type override in the launch template.
-}
-
-variable "override_weight_cap_2" {
-  type    = string  # Specifies the variable type as string.
-  default = "2"  # Weighted capacity for the second override instance type.
-}
-
-variable "rds_master_username" {
-  description = "The master username for the RDS instance"  # Description of the variable.
-  type        = string  # Type of the variable is string.
-}
-
-variable "rds_master_password" {
-  description = "The master password for the RDS instance"  # Description of the variable.
-  type        = string  # Data type is string.
-  sensitive   = true  # Marks the variable as sensitive, which means it will not be logged or outputted in plaintext.
-}
-
