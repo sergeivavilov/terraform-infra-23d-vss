@@ -1,6 +1,5 @@
 .
 ├── README.md
-├── all_project_contents.txt
 ├── eks-module
 │   ├── aws_auth.tf
 │   ├── eks.tf
@@ -19,52 +18,56 @@
         ├── mainvars.tf
         └── providers.tf
 
-5 directories, 15 files
+5 directories, 14 files
 .github/workflows/terraform-deploy.yaml
-
 name: Terraform Deployment Workflow
 
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     branches: ["*"]
 
 permissions:
-  id-token: write # This is required for requesting the JWT
-  contents: read  # This is required for actions/checkout
+  id-token: write
+  contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Select environment based on branch pushed
     environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
 
     steps:
-      - name: AWS Loggin
-        uses: aws-actions/configure-aws-credentials@v3
-        with:
-          role-to-assume: ${{ vars.AWS_IAM_ROLE }}
-          role-session-name: githubactionsbot 
-          aws-region: "us-east-1"
-
-      - name: clone repo 
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: initialize Terraform
-        run: terraform init 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: "us-east-1"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.0
+
+      - name: Initialize Terraform
+        run: terraform init
         working-directory: ./root/main-eks-root
 
-      - name: Plan execution
+      - name: Plan Terraform Execution
         run: terraform plan -var-file="homework-project.vss.auto.tfvars"
         working-directory: ./root/main-eks-root
 
-      # - name: execute terraform
-      #   run: terraform apply -var-file="homework-project.notyouraverageusername.auto.tfvars" -auto-approve
+      # Uncomment below to apply the plan
+      # - name: Apply Terraform
+      #   run: terraform apply -var-file="homework-project.vss.auto.tfvars" -auto-approve
       #   working-directory: ./root/main-eks-root
-      
-      # - name: destroy infrastructure
-      #   run: terraform destroy -auto-approve
-      #   working-directory: ./root/main-eks-root./eks-module/workers.tf
+
+      # Uncomment below to destroy the infrastructure
+      # - name: Destroy Terraform
+      #   run: terraform destroy -var-file="homework-project.vss.auto.tfvars" -auto-approve
+      #   working-directory: ./root/main-eks-root
+./eks-module/workers.tf
 
 data "aws_ssm_parameter" "eks_ami_id" {
   name = "/aws/service/eks/optimized-ami/1.29/amazon-linux-2/recommended/image_id"
@@ -485,18 +488,18 @@ variable "worker_sg" {
 #   db_subnet_group_name    = var.db_subnet_group_name
 # }
 ./root/main-eks-root/providers.tf
-# Provider
 provider "aws" {
   region = "us-east-1"
 }
 
 terraform {
   backend "s3" {
-    bucket = "githubactions-terrafrom-task"
+    bucket = "githubactions-terraform-task"
     key    = "terraform.tfstate"
     region = "us-east-1"
   }
 }
+
 
 # this provider required for configmap creation
 terraform {
@@ -506,6 +509,8 @@ terraform {
     }
   }
 }
+
+
 
 provider "kubernetes" {
   host                   = module.project-x-eks-cluster.endpoint
