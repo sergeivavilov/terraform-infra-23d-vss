@@ -1,62 +1,44 @@
+
 name: Terraform Deployment Workflow
 
 on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
-    branches:
-      - main  
-      - dev
+    branches: ["*"]
 
 permissions:
-      id-token: write 
-      contents: read 
+  id-token: write # This is required for requesting the JWT
+  contents: read  # This is required for actions/checkout
 
 jobs:
-  terraform:
+  deploy:
     runs-on: ubuntu-latest
-    environment: ${{ (github.ref == 'refs/heads/main' && 'production') || (github.ref == 'refs/heads/staging' && 'staging') || 'dev' }}
+    # Select environment based on branch pushed
+    environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: AWS Loggin
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ vars.AWS_IAM_ROLE }}
+          role-session-name: githubactionsbot 
+          aws-region: "us-east-1"
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1.7.0
-      with:
-        aws-region: us-east-1
-        role-to-assume: ${{ secrets.IAM_ROLE }}
-        audience: sts.amazonaws.com
+      - name: clone repo 
+        uses: actions/checkout@v4
 
-    - name: Terraform Initialize
-      run: terraform init -reconfigure -backend-config="bucket=project-x-dev-state-alon" -backend-config="key=terraform.tfstate" -backend-config="region=us-east-1"
-      working-directory: ./roots/main-eks-root/
+      - name: initialize Terraform
+        run: terraform init 
+        working-directory: ./root/main-eks-root
 
-    - name: Terraform Plan
-      run: terraform plan -var-file="homework-project-Alontrubin13.tfvars" -out=tfplan
-      working-directory: ./roots/main-eks-root/
+      - name: Plan execution
+        run: terraform plan -var-file="homework-project.vss.auto.tfvars"
+        working-directory: ./root/main-eks-root
 
-    # - name: Terraform Apply and Update Kubeconfig
-    #   run: |
-    #    terraform apply -auto-approve "tfplan"
-    #    aws eks update-kubeconfig --name project-x-dev
-    #    kubectl apply -f ../../kubernetes-resources/aws-auth.yaml
-    #    account_number=$(aws sts get-caller-identity --query "Account" --output text)
-    #   working-directory: ./roots/main-eks-root/
-
-
-    # - name: Terraform Destroy
-    #   run: terraform destroy -var-file="homework-project-Alontrubin13.tfvars" -auto-approve
-    #   working-directory: ./roots/main-eks-root/
-
-    # - name: Apply permissions in aws-auth for Kubernetes RBAC
-    #   working-directory: ./kubernetes-resources
-    #   # account number, worker node role name, cluster name, name of any additional roles
-    #   run: |
-    #   # aws eks update-kubeconfig --name project-x-${{ env.ENVIRONMENT_STAGE }}
-    #     aws eks update-kubeconfig --name project-x-staging-dev
-    #     kubectl apply -f aws-auth.yaml
-    #     account_number=$(aws sts get-caller-identity --query "Account" --output text)
-    #   # cat aws-auth.yaml | sed "s/ACCOUNT/${account_number}/g" | kubectl apply -f -
-    #     # user_admin_role=$(aws iam list-roles --query "Roles[?starts_with(RoleName, 'AWSReservedSSO_Administrator')].Arn" --output text | sed "s/aws-reserved\/sso.amazonaws.com\/us-east-.\///g")
-
-      ###########
-#
+      # - name: execute terraform
+      #   run: terraform apply -var-file="homework-project.notyouraverageusername.auto.tfvars" -auto-approve
+      #   working-directory: ./root/main-eks-root
+      
+      # - name: destroy infrastructure
+      #   run: terraform destroy -auto-approve
+      #   working-directory: ./root/main-eks-root
