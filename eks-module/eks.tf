@@ -1,19 +1,17 @@
 resource "aws_eks_cluster" "cluster" {
-  name     = var.cluster_name
+  name     = var.name
   role_arn = aws_iam_role.eks_cluster_role.arn
-  version  = var.cluster_version
+  version  = "1.29"
 
   vpc_config {
-    subnet_ids         = var.cluster_subnet_ids
+    subnet_ids         = var.subnet_ids
     security_group_ids = [aws_security_group.eks_cluster_sg.id]
   }
-
   kubernetes_network_config {
-    service_ipv4_cidr = var.cluster_cidr
+    service_ipv4_cidr = var.CIDR
   }
 
-  # Ensure that IAM Role permissions are created before and deleted after EKS Cluster handling.
-  # Otherwise, EKS will not be able to properly delete EKS managed EC2 infrastructure such as Security Groups.
+  # make sure to add this so the cluster creates after the role exists
   depends_on = [
     aws_iam_role_policy_attachment.eks_cluster_role-AmazonEKSClusterPolicy
   ]
@@ -23,82 +21,72 @@ resource "aws_eks_cluster" "cluster" {
   }
 }
 
+
 # trust policy for the role
 data "aws_iam_policy_document" "assume_role" {
   statement {
-    effect = var.policy_effect
+    effect = "Allow"
 
     principals {
-      type        = var.policy_type
-      identifiers = var.policy_identifiers
+      type        = "Service"
+      identifiers = ["eks.amazonaws.com"]
     }
 
-    actions = var.policy_actions
+    actions = ["sts:AssumeRole"]
   }
 }
 
 # create IAM role
 resource "aws_iam_role" "eks_cluster_role" {
-  name               = var.role_name
+  name               = "${var.name}-eks-iam-role"
   assume_role_policy = data.aws_iam_policy_document.assume_role.json
 }
 
-# attach policy to the role
 resource "aws_iam_role_policy_attachment" "eks_cluster_role-AmazonEKSClusterPolicy" {
-  policy_arn = var.attachment_policy_arn
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
   role       = aws_iam_role.eks_cluster_role.name
 }
 
 
+# security group for cluster
 resource "aws_security_group" "eks_cluster_sg" {
-  name        = var.eks_cluster_sg_name
-  description = var.eks_cluster_sg_description
-  vpc_id      = var.eks_cluster_sg_vpc_id
-
-  tags = var.eks_cluster_sg_tags
+  name        = "EKS updated group"
+  description = "Security group for all inbound and outbound traffic for EKS"
+  vpc_id      = var.vpc_id
 }
-
-resource "aws_vpc_security_group_ingress_rule" "allow_tls_ipv4" {
-  security_group_id            = aws_security_group.eks_cluster_sg.id
+resource "aws_vpc_security_group_ingress_rule" "allow_worker_traffic" {
+  security_group_id = aws_security_group.eks_cluster_sg.id
+  from_port   = 0
+  ip_protocol = "tcp"
+  to_port     = 65535
+  referenced_security_group_id = aws_security_group.eks_worker_sg.id
+}
+resource "aws_vpc_security_group_ingress_rule" "allow_self_traffic" {
+  security_group_id = aws_security_group.eks_cluster_sg.id
+  from_port   = 0
+  ip_protocol = "tcp"
+  to_port     = 65535
   referenced_security_group_id = aws_security_group.eks_cluster_sg.id
-  from_port                    = var.ingress_port_ipv4
-  ip_protocol                  = var.ingress_protocol_ipv4
-  to_port                      = var.ingress_port_ipv4
-  # cidr_blocks       = ["0.0.0.0/0"] 
-  # Ignore changes to these attributes
-  lifecycle {
-    ignore_changes = [
-      from_port,
-      to_port,
-      ip_protocol,
-      referenced_security_group_id,
-    ]
-  }
+} 
+
+# CNI add-on that is missing from EKS configuration
+resource "aws_eks_addon" "cni_pluggin" {
+  cluster_name  = aws_eks_cluster.cluster.name
+  addon_name    = "vpc-cni"
+  addon_version = "v1.18.1-eksbuild.1"
+  depends_on    = [aws_eks_cluster.cluster]
+}
+resource "aws_eks_addon" "kube_proxy" {
+  cluster_name  = aws_eks_cluster.cluster.name
+  addon_name    = "kube-proxy"
+  addon_version = "v1.29.1-eksbuild.2" 
+  depends_on    = [aws_eks_cluster.cluster]
 }
 
-resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4" {
-  security_group_id = aws_security_group.eks_cluster_sg.id
-  cidr_ipv4         = var.egress_cidr_ipv4
-  ip_protocol       = var.egress_protocol_ipv4 # semantically equivalent to all ports
-}
-
-resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv6" {
-  security_group_id = aws_security_group.eks_cluster_sg.id
-  cidr_ipv6         = var.egress_cidr_ipv6
-  ip_protocol       = var.egress_protocol_ipv6 # semantically equivalent to all ports
-}
-
-# 
 output "endpoint" {
   value = aws_eks_cluster.cluster.endpoint
 }
 
 output "kubeconfig-certificate-authority-data" {
-  value = aws_eks_cluster.cluster.certificate_authority[0].data
+  value = aws_eks_cluster.cluster.certificate_authority
 }
-
-
-
-
-
-#
