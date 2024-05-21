@@ -2,8 +2,7 @@ name: Terraform Deployment Workflow
 
 on:
   push:
-    branches:
-      - "*"
+    branches: ["*"]
 
 permissions:
   id-token: write
@@ -21,22 +20,28 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
-          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: "us-east-1"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.0
 
       - name: Initialize Terraform
         run: terraform init
         working-directory: ./root/main-eks-root
 
-      - name: Plan Execution
+      - name: Plan Terraform Execution
         run: terraform plan -var-file="homework-project.vss.auto.tfvars"
         working-directory: ./root/main-eks-root
 
-      # Uncomment and configure as needed
+      # Uncomment below to apply the plan
       # - name: Apply Terraform
       #   run: terraform apply -var-file="homework-project.vss.auto.tfvars" -auto-approve
       #   working-directory: ./root/main-eks-root
 
-      # - name: Destroy Infrastructure
-      #   run: terraform destroy -auto-approve
+      # Uncomment below to destroy the infrastructure
+      # - name: Destroy Terraform
+      #   run: terraform destroy -var-file="homework-project.vss.auto.tfvars" -auto-approve
       #   working-directory: ./root/main-eks-root
