@@ -1,15 +1,15 @@
-# Provider
 provider "aws" {
   region = "us-east-1"
 }
 
 terraform {
   backend "s3" {
-    bucket = "githubactions-terrafrom-task"
+    bucket = "githubactions-terraform-task"
     key    = "terraform.tfstate"
     region = "us-east-1"
   }
 }
+
 
 # this provider required for configmap creation
 terraform {
@@ -19,6 +19,8 @@ terraform {
     }
   }
 }
+
+
 
 provider "kubernetes" {
   host                   = module.project-x-eks-cluster.endpoint
