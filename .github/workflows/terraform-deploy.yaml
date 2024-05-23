@@ -42,6 +42,6 @@ jobs:
       #   working-directory: ./root/main-eks-root
 
       # Uncomment below to destroy the infrastructure
-      # - name: Destroy Terraform
-      #   run: terraform destroy -var-file="homework-project.vss.auto.tfvars" -auto-approve
-      #   working-directory: ./root/main-eks-root
+      - name: Destroy Terraform
+        run: terraform destroy -var-file="homework-project.vss.auto.tfvars" -auto-approve
+        working-directory: ./root/main-eks-root
