@@ -36,16 +36,16 @@ jobs:
         run: terraform plan -var-file="homework-project.vss.auto.tfvars"
         working-directory: ./root/main-eks-root
 
-      # Uncomment below to apply the plan
-      # - name: Apply Terraform
-      #   run: terraform apply -var-file="homework-project.vss.auto.tfvars" -auto-approve
-      #   working-directory: ./root/main-eks-root
+      # # Uncomment below to apply the plan
+      # # - name: Apply Terraform
+      # #   run: terraform apply -var-file="homework-project.vss.auto.tfvars" -auto-approve
+      # #   working-directory: ./root/main-eks-root
 
-      # Uncomment below to destroy the infrastructure
+      # # Uncomment below to destroy the infrastructure
+      # # - name: Destroy Terraform
+      # #   run: terraform destroy -var-file="homework-project.vss.auto.tfvars" -auto-approve
+      # #   working-directory: ./root/main-eks-root
+      # # Uncomment below to destroy the infrastructure
       # - name: Destroy Terraform
       #   run: terraform destroy -var-file="homework-project.vss.auto.tfvars" -auto-approve
       #   working-directory: ./root/main-eks-root
-      # Uncomment below to destroy the infrastructure
-      - name: Destroy Terraform
-        run: terraform destroy -var-file="homework-project.vss.auto.tfvars" -auto-approve
-        working-directory: ./root/main-eks-root
