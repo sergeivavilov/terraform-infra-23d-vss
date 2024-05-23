@@ -1,3 +1,4 @@
+# Provider
 provider "aws" {
   region = "us-east-1"
 }
@@ -10,7 +11,6 @@ terraform {
   }
 }
 
-
 # this provider required for configmap creation
 terraform {
   required_providers {
@@ -19,8 +19,6 @@ terraform {
     }
   }
 }
-
-
 
 provider "kubernetes" {
   host                   = module.project-x-eks-cluster.endpoint
