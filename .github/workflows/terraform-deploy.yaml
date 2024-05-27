@@ -1,51 +1,44 @@
+
 name: Terraform Deployment Workflow
 
 on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     branches: ["*"]
 
 permissions:
-  id-token: write
-  contents: read
+  id-token: write # This is required for requesting the JWT
+  contents: read  # This is required for actions/checkout
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Select environment based on branch pushed
     environment: ${{ (github.ref == 'refs/heads/main' && 'dev') || (github.ref == 'refs/heads/prod' && 'production') }}
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
+      - name: AWS Loggin
         uses: aws-actions/configure-aws-credentials@v3
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: githubactionsbot 
           aws-region: "us-east-1"
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
-        with:
-          terraform_version: 1.0.0
+      - name: clone repo 
+        uses: actions/checkout@v4
 
-      - name: Initialize Terraform
-        run: terraform init
+      - name: initialize Terraform
+        run: terraform init 
         working-directory: ./root/main-eks-root
 
-      - name: Plan Terraform Execution
+      - name: Plan execution
         run: terraform plan -var-file="homework-project.vss.auto.tfvars"
         working-directory: ./root/main-eks-root
 
-      # # Uncomment below to apply the plan
-      # # - name: Apply Terraform
-      # #   run: terraform apply -var-file="homework-project.vss.auto.tfvars" -auto-approve
-      # #   working-directory: ./root/main-eks-root
-
-      # # Uncomment below to destroy the infrastructure
-      # # - name: Destroy Terraform
-      # #   run: terraform destroy -var-file="homework-project.vss.auto.tfvars" -auto-approve
-      # #   working-directory: ./root/main-eks-root
-      # # Uncomment below to destroy the infrastructure
-      # - name: Destroy Terraform
-      #   run: terraform destroy -var-file="homework-project.vss.auto.tfvars" -auto-approve
+      - name: execute terraform
+        run: terraform apply -var-file="homework-project.vss.auto.tfvars" -auto-approve
+        working-directory: ./root/main-eks-root
+      
+      # - name: destroy infrastructure
+      #   run: terraform destroy -auto-approve
       #   working-directory: ./root/main-eks-root
